@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinkVault - Personal Bookmark & Link Manager</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+</head>
+<body class="bg-[#121212] text-zinc-100 font-sans">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useLayoutEffect, useRef } = React;
+
+    const loadJSON = (key, fallback) => {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch { return fallback; }
+    };
+
+    const normalizeUrl = (u) => (/^https?:\/\//i.test(u) ? u : `https://${u}`);
+    const getDomain = (u) => {
+      try { return new URL(normalizeUrl(u)).hostname.replace(/^www\./, ''); } catch { return ''; }
+    };
+
+    const ICONS = {
+      open: <><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></>,
+      copy: <><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></>,
+      edit: <><path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></>,
+      archive: <><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></>,
+      trash: <><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>,
+      restore: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></>,
+      check: <path d="M20 6 9 17l-5-5"/>,
+    };
+    const Icon = ({ name, className = 'w-4 h-4' }) => (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{ICONS[name]}</svg>
+    );
+
+    const MENU_ITEM = 'w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-zinc-300 hover:bg-zinc-800 transition';
+
+    // Renders in a portal on <body> so the card's overflow-hidden / transform can't clip or cover it.
+    // Opens downward, flips upward if there isn't room, and stays inside the viewport.
+    function ActionMenu({ anchorRect, onClose, children }) {
+      const ref = useRef(null);
+      const [pos, setPos] = useState(null);
+
+      useLayoutEffect(() => {
+        const m = ref.current.getBoundingClientRect();
+        const gap = 6, pad = 8;
+        let top = anchorRect.bottom + gap;
+        if (top + m.height > window.innerHeight - pad) {
+          top = Math.max(pad, anchorRect.top - gap - m.height);
+        }
+        const left = Math.min(Math.max(pad, anchorRect.right - m.width), window.innerWidth - m.width - pad);
+        setPos({ top, left });
+      }, [anchorRect]);
+
+      useEffect(() => {
+        const onDown = (e) => {
+          if (ref.current && !ref.current.contains(e.target) && !e.target.closest('[data-menu-trigger]')) onClose();
+        };
+        const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+        document.addEventListener('mousedown', onDown);
+        document.addEventListener('keydown', onKey);
+        window.addEventListener('resize', onClose);
+        window.addEventListener('scroll', onClose, true);
+        return () => {
+          document.removeEventListener('mousedown', onDown);
+          document.removeEventListener('keydown', onKey);
+          window.removeEventListener('resize', onClose);
+          window.removeEventListener('scroll', onClose, true);
+        };
+      }, [onClose]);
+
+      return ReactDOM.createPortal(
+        <div
+          ref={ref}
+          role="menu"
+          style={{ position: 'fixed', top: pos ? pos.top : 0, left: pos ? pos.left : 0, visibility: pos ? 'visible' : 'hidden' }}
+          className="w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl py-1 z-[100]"
+        >
+          {children}
+        </div>,
+        document.body
+      );
+    }
+
+    const INITIAL_COLLECTIONS = [
+      { id: 'entertainment', name: 'Entertainment', icon: '🎮' },
+      { id: 'development', name: 'Development', icon: '💻' },
+      { id: 'design', name: 'Design Resources', icon: '🎨' },
+      { id: 'reading', name: 'Reading List', icon: '📖' },
+      { id: 'tools', name: 'Tools', icon: '🛠️' },
+    ];
+
+    const PRESET_BANNERS = {
+      'youtube.com': 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=800&auto=format&fit=crop',
+      'twitch.tv': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop',
+      'github.com': 'https://images.unsplash.com/photo-1618401471353-b98aedd04e11?q=80&w=800&auto=format&fit=crop',
+      'figma.com': 'https://images.unsplash.com/photo-1609921212029-bb5a28e60960?q=80&w=800&auto=format&fit=crop',
+      'react.dev': 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=800&auto=format&fit=crop',
+      'spotify.com': 'https://images.unsplash.com/photo-1614680376593-902f749f7b9c?q=80&w=800&auto=format&fit=crop'
+    };
+
+    const INITIAL_BOOKMARKS = [
+      {
+        id: '1',
+        title: 'Twitch',
+        url: 'https://twitch.tv',
+        description: 'Live streaming platform for gamers, esports, music, and creative broadcasts.',
+        collection: 'entertainment',
+        isFavorite: true,
+        status: 'active',
+        bannerUrl: PRESET_BANNERS['twitch.tv']
+      },
+      {
+        id: '2',
+        title: 'YouTube',
+        url: 'https://youtube.com',
+        description: 'Watch videos, live streams, music, and tutorials from creators worldwide.',
+        collection: 'entertainment',
+        isFavorite: true,
+        status: 'active',
+        bannerUrl: PRESET_BANNERS['youtube.com']
+      },
+      {
+        id: '3',
+        title: 'GitHub',
+        url: 'https://github.com',
+        description: 'Where the world builds software. Code hosting, version control, and collaboration.',
+        collection: 'development',
+        isFavorite: true,
+        status: 'active',
+        bannerUrl: PRESET_BANNERS['github.com']
+      },
+      {
+        id: '4',
+        title: 'React Docs',
+        url: 'https://react.dev',
+        description: 'The official documentation for React - the library for web and native user interfaces.',
+        collection: 'development',
+        isFavorite: true,
+        status: 'active',
+        bannerUrl: PRESET_BANNERS['react.dev']
+      },
+      {
+        id: '5',
+        title: 'Figma',
+        url: 'https://figma.com',
+        description: 'The collaborative interface design tool for teams to craft visual experiences.',
+        collection: 'design',
+        isFavorite: true,
+        status: 'active',
+        bannerUrl: PRESET_BANNERS['figma.com']
+      }
+    ];
+
+    function App() {
+      const [bookmarks, setBookmarks] = useState(() => {
+        const saved = loadJSON('linkvault_bookmarks', null);
+        // older saves have no `status`; default them to active
+        return Array.isArray(saved) ? saved.map(b => ({ status: 'active', ...b })) : INITIAL_BOOKMARKS;
+      });
+
+      const [collections, setCollections] = useState(() => {
+        const saved = loadJSON('linkvault_collections', null);
+        return Array.isArray(saved) ? saved : INITIAL_COLLECTIONS;
+      });
+
+      const [activeTab, setActiveTab] = useState('all');
+      const [activeCollection, setActiveCollection] = useState(null);
+      const [searchQuery, setSearchQuery] = useState('');
+      const [menu, setMenu] = useState(null); // { id, rect }
+      const [editingId, setEditingId] = useState(null);
+      const [copiedId, setCopiedId] = useState(null);
+      const closeMenu = React.useCallback(() => setMenu(null), []);
+      const [isModalOpen, setIsModalOpen] = useState(false);
+      const [isNewCollectionModalOpen, setIsNewCollectionModalOpen] = useState(false);
+
+      const [formData, setFormData] = useState({
+        title: '',
+        url: '',
+        description: '',
+        collection: 'development',
+        isFavorite: false
+      });
+
+      const [newCollectionData, setNewCollectionData] = useState({ name: '', icon: '📌' });
+
+      useEffect(() => {
+        localStorage.setItem('linkvault_bookmarks', JSON.stringify(bookmarks));
+      }, [bookmarks]);
+
+      useEffect(() => {
+        localStorage.setItem('linkvault_collections', JSON.stringify(collections));
+      }, [collections]);
+
+      const toggleFavorite = (id) => {
+        setBookmarks(prev => prev.map(b => b.id === id ? { ...b, isFavorite: !b.isFavorite } : b));
+      };
+
+      const setStatus = (id, status) => {
+        setBookmarks(prev => prev.map(b => b.id === id ? { ...b, status } : b));
+        closeMenu();
+      };
+
+      const deleteForever = (id) => {
+        if (window.confirm('Delete this link permanently? This cannot be undone.')) {
+          setBookmarks(prev => prev.filter(b => b.id !== id));
+        }
+        closeMenu();
+      };
+
+      const copyToClipboard = async (text, id) => {
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand('copy'); } catch {}
+          ta.remove();
+        }
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 1500);
+        closeMenu();
+      };
+
+      const openEdit = (bm) => {
+        setEditingId(bm.id);
+        setFormData({ title: bm.title, url: bm.url, description: bm.description || '', collection: bm.collection, isFavorite: !!bm.isFavorite });
+        setIsModalOpen(true);
+        closeMenu();
+      };
+
+      const openAdd = () => {
+        setEditingId(null);
+        setFormData({ title: '', url: '', description: '', collection: collections[0] ? collections[0].id : '', isFavorite: false });
+        setIsModalOpen(true);
+      };
+
+      const closeModal = () => { setIsModalOpen(false); setEditingId(null); };
+
+      const handleCreateOrUpdate = (e) => {
+        e.preventDefault();
+        if (!formData.title.trim() || !formData.url.trim()) return;
+        const bannerUrl = PRESET_BANNERS[getDomain(formData.url)] || null;
+
+        if (editingId) {
+          setBookmarks(prev => prev.map(b => b.id === editingId ? { ...b, ...formData, bannerUrl } : b));
+        } else {
+          setBookmarks(prev => [{ id: Date.now().toString(), status: 'active', ...formData, bannerUrl }, ...prev]);
+        }
+        closeModal();
+      };
+
+      const handleAddCollection = (e) => {
+        e.preventDefault();
+        if (!newCollectionData.name) return;
+        let baseId = newCollectionData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'collection';
+        let id = baseId, n = 2;
+        while (collections.some(c => c.id === id)) id = `${baseId}-${n++}`;
+        const newCol = {
+          id,
+          name: newCollectionData.name,
+          icon: newCollectionData.icon || '📌'
+        };
+        setCollections(prev => [...prev, newCol]);
+        setNewCollectionData({ name: '', icon: '📌' });
+        setIsNewCollectionModalOpen(false);
+      };
+
+      const activeBookmarks = bookmarks.filter(b => b.status === 'active');
+      const archivedCount = bookmarks.filter(b => b.status === 'archived').length;
+      const trashedCount = bookmarks.filter(b => b.status === 'trashed').length;
+
+      const filteredBookmarks = bookmarks.filter(bm => {
+        const matchesSearch = bm.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                              bm.url.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              bm.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+        if (!matchesSearch) return false;
+        if (activeTab === 'trash') return bm.status === 'trashed';
+        if (activeTab === 'archive') return bm.status === 'archived';
+        if (bm.status !== 'active') return false;
+        if (activeCollection) return bm.collection === activeCollection;
+        if (activeTab === 'favorites') return bm.isFavorite;
+        return true;
+      });
+
+      return (
+        <div className="flex h-screen bg-[#121212] text-zinc-100 font-sans overflow-hidden">
+          {/* Sidebar */}
+          <aside className="w-64 bg-[#18181b] border-r border-zinc-800 flex flex-col justify-between">
+            <div className="p-4 space-y-6 overflow-y-auto">
+              <div className="flex items-center space-x-2 px-2">
+                <div className="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center font-bold text-white shadow-lg shadow-orange-600/30">
+                  LV
+                </div>
+                <span className="font-bold text-lg tracking-tight">LinkVault</span>
+              </div>
+
+              <nav className="space-y-1">
+                <button
+                  onClick={() => { setActiveTab('all'); setActiveCollection(null); }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
+                    activeTab === 'all' && !activeCollection ? 'bg-orange-600/10 text-orange-500' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <span>📑</span>
+                    <span>All Bookmarks</span>
+                  </div>
+                  <span className="text-xs bg-zinc-800 px-2 py-0.5 rounded-full">{activeBookmarks.length}</span>
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('favorites'); setActiveCollection(null); }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
+                    activeTab === 'favorites' && !activeCollection ? 'bg-orange-600/10 text-orange-500' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <span>❤️</span>
+                    <span>Favorites</span>
+                  </div>
+                  <span className="text-xs bg-zinc-800 px-2 py-0.5 rounded-full">{activeBookmarks.filter(b => b.isFavorite).length}</span>
+                </button>
+              
+                <button
+                  onClick={() => { setActiveTab('archive'); setActiveCollection(null); }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
+                    activeTab === 'archive' && !activeCollection ? 'bg-orange-600/10 text-orange-500' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <span>🗄️</span>
+                    <span>Archive</span>
+                  </div>
+                  <span className="text-xs bg-zinc-800 px-2 py-0.5 rounded-full">{archivedCount}</span>
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('trash'); setActiveCollection(null); }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
+                    activeTab === 'trash' && !activeCollection ? 'bg-orange-600/10 text-orange-500' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <span>🗑️</span>
+                    <span>Trash</span>
+                  </div>
+                  <span className="text-xs bg-zinc-800 px-2 py-0.5 rounded-full">{trashedCount}</span>
+                </button>
+              </nav>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-3 text-xs font-semibold text-zinc-500 tracking-wider uppercase">
+                  <span>Collections</span>
+                  <button 
+                    onClick={() => setIsNewCollectionModalOpen(true)}
+                    className="hover:text-orange-400 p-0.5 rounded transition"
+                  >
+                    + New
+                  </button>
+                </div>
+
+                <div className="space-y-0.5">
+                  {collections.map(col => {
+                    const count = activeBookmarks.filter(b => b.collection === col.id).length;
+                    return (
+                      <button
+                        key={col.id}
+                        onClick={() => { setActiveCollection(col.id); setActiveTab('collection'); }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
+                          activeCollection === col.id ? 'bg-orange-600/10 text-orange-500' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2.5">
+                          <span>{col.icon}</span>
+                          <span>{col.name}</span>
+                        </div>
+                        <span className="text-xs text-zinc-500">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-zinc-800 text-xs text-zinc-500 flex items-center justify-between">
+              <span>LinkVault v1.0</span>
+              <span className="text-orange-500 font-mono">Personal Vault</span>
+            </div>
+          </aside>
+
+          {/* Main Workspace */}
+          <main className="flex-1 flex flex-col min-w-0 bg-[#121212] overflow-hidden">
+            <header className="h-16 border-b border-zinc-800 flex items-center justify-between px-6 bg-[#18181b]/50">
+              <div className="flex items-center space-x-3 flex-1 max-w-md">
+                <input
+                  type="text"
+                  placeholder="Search links, titles..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-orange-500 transition"
+                />
+              </div>
+
+              <button
+                onClick={openAdd}
+                className="flex items-center space-x-2 bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg font-medium text-sm transition shadow-lg shadow-orange-600/20"
+              >
+                <span>+ Add Link</span>
+              </button>
+            </header>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredBookmarks.length === 0 && (
+                  <div className="col-span-full text-center text-zinc-500 text-sm py-16">
+                    {activeTab === 'trash' ? 'Trash is empty.' : activeTab === 'archive' ? 'Nothing archived.' : 'No links found.'}
+                  </div>
+                )}
+                {filteredBookmarks.map(bm => {
+                  const colObj = collections.find(c => c.id === bm.collection);
+                  return (
+                    <div
+                      key={bm.id}
+                      className="group relative bg-[#1c1c21] border border-zinc-800/80 rounded-xl overflow-hidden hover:border-zinc-700/80 hover:shadow-xl hover:shadow-orange-900/10 transition duration-200 flex flex-col justify-between"
+                    >
+                      {bm.bannerUrl && (
+                        <div className="h-28 w-full overflow-hidden bg-zinc-900 relative border-b border-zinc-800/50">
+                          <img 
+                            src={bm.bannerUrl} 
+                            alt={bm.title} 
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300 opacity-80"
+                          />
+                        </div>
+                      )}
+
+                      <div className="p-4 flex-1 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-sm font-bold border border-zinc-700/50">
+                              {colObj ? colObj.icon : '🌐'}
+                            </div>
+
+                            <div className="flex items-center space-x-1 relative">
+                              <button
+                                onClick={() => toggleFavorite(bm.id)}
+                                className={`p-1.5 rounded-lg transition ${
+                                  bm.isFavorite ? 'text-rose-500 hover:text-rose-400' : 'text-zinc-500 hover:text-zinc-300'
+                                }`}
+                              >
+                                {bm.isFavorite ? '❤️' : '🤍'}
+                              </button>
+
+                              <button
+                                data-menu-trigger
+                                aria-haspopup="menu"
+                                aria-expanded={menu && menu.id === bm.id}
+                                onClick={(e) => {
+                                  if (menu && menu.id === bm.id) return closeMenu();
+                                  setMenu({ id: bm.id, rect: e.currentTarget.getBoundingClientRect() });
+                                }}
+                                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition"
+                              >
+                                <span className="font-bold tracking-widest text-xs">•••</span>
+                              </button>
+
+                            </div>
+                          </div>
+
+                          <h3 className="font-semibold text-zinc-100 text-base mb-1 tracking-tight line-clamp-1">{bm.title}</h3>
+                          <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed mb-4">{bm.description}</p>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs text-zinc-500 pt-2 border-t border-zinc-800/40">
+                          <span className="flex items-center space-x-1.5">
+                            <span>{colObj?.icon}</span>
+                            <span>{colObj?.name}</span>
+                          </span>
+                          <a 
+                            href={bm.url.startsWith('http') ? bm.url : `https://${bm.url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:text-orange-400 transition"
+                          >
+                            {copiedId === bm.id ? <span className="text-orange-400 flex items-center gap-1"><Icon name="check" className="w-3.5 h-3.5" /> Copied</span> : '↗'}
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </main>
+
+          {/* Card action menu (portal) */}
+          {menu && (() => {
+            const bm = bookmarks.find(b => b.id === menu.id);
+            if (!bm) return null;
+            return (
+              <ActionMenu anchorRect={menu.rect} onClose={closeMenu}>
+                {bm.status === 'trashed' ? (
+                  <>
+                    <button role="menuitem" className={MENU_ITEM} onClick={() => setStatus(bm.id, 'active')}>
+                      <Icon name="restore" /> Restore
+                    </button>
+                    <div className="my-1 border-t border-zinc-800" />
+                    <button role="menuitem" className={MENU_ITEM.replace('text-zinc-300', 'text-rose-400').replace('hover:bg-zinc-800', 'hover:bg-rose-950/40')} onClick={() => deleteForever(bm.id)}>
+                      <Icon name="trash" /> Delete Permanently
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <a role="menuitem" href={normalizeUrl(bm.url)} target="_blank" rel="noopener noreferrer" onClick={closeMenu} className={MENU_ITEM}>
+                      <Icon name="open" /> Open Link
+                    </a>
+                    <button role="menuitem" className={MENU_ITEM} onClick={() => copyToClipboard(normalizeUrl(bm.url), bm.id)}>
+                      <Icon name="copy" /> Copy Link
+                    </button>
+                    <button role="menuitem" className={MENU_ITEM} onClick={() => openEdit(bm)}>
+                      <Icon name="edit" /> Edit
+                    </button>
+                    {bm.status === 'archived' ? (
+                      <button role="menuitem" className={MENU_ITEM} onClick={() => setStatus(bm.id, 'active')}>
+                        <Icon name="restore" /> Unarchive
+                      </button>
+                    ) : (
+                      <button role="menuitem" className={MENU_ITEM} onClick={() => setStatus(bm.id, 'archived')}>
+                        <Icon name="archive" /> Archive
+                      </button>
+                    )}
+                    <div className="my-1 border-t border-zinc-800" />
+                    <button role="menuitem" className={MENU_ITEM.replace('text-zinc-300', 'text-rose-400').replace('hover:bg-zinc-800', 'hover:bg-rose-950/40')} onClick={() => setStatus(bm.id, 'trashed')}>
+                      <Icon name="trash" /> Move to Trash
+                    </button>
+                  </>
+                )}
+              </ActionMenu>
+            );
+          })()}
+
+          {/* Add / Edit Modal */}
+          {isModalOpen && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-[#18181b] border border-zinc-800 rounded-xl w-full max-w-md p-6 shadow-2xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-lg text-zinc-100">{editingId ? 'Edit Link' : 'Add New Link'}</h3>
+                  <button onClick={closeModal} className="text-zinc-500 hover:text-zinc-300">✕</button>
+                </div>
+                <form onSubmit={handleCreateOrUpdate} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1">Title</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. YouTube"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1">URL</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. https://youtube.com"
+                      value={formData.url}
+                      onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1">Collection</label>
+                    <select
+                      value={formData.collection}
+                      onChange={(e) => setFormData({ ...formData, collection: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-orange-500"
+                    >
+                      {collections.map(c => (
+                        <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1">Description</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Short summary of this link..."
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end space-x-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="px-4 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-lg text-sm font-medium bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-600/20"
+                    >
+                      {editingId ? 'Save Changes' : 'Save Link'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* New Collection Modal */}
+          {isNewCollectionModalOpen && (
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-[#18181b] border border-zinc-800 rounded-xl w-full max-w-sm p-6 shadow-2xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-lg text-zinc-100">Create Collection</h3>
+                  <button onClick={() => setIsNewCollectionModalOpen(false)} className="text-zinc-500 hover:text-zinc-300">✕</button>
+                </div>
+                <form onSubmit={handleAddCollection} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1">Emoji Icon</label>
+                    <input
+                      type="text"
+                      maxLength={2}
+                      value={newCollectionData.icon}
+                      onChange={(e) => setNewCollectionData({ ...newCollectionData, icon: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-center text-zinc-100 focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-400 mb-1">Collection Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Gaming & Streams"
+                      value={newCollectionData.name}
+                      onChange={(e) => setNewCollectionData({ ...newCollectionData, name: e.target.value })}
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end space-x-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsNewCollectionModalOpen(false)}
+                      className="px-4 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-lg text-sm font-medium bg-orange-600 hover:bg-orange-500 text-white"
+                    >
+                      Create
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
