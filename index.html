@@ -1,687 +1,458 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LinkVault - Personal Bookmark & Link Manager</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LinkVault</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.26.4/babel.min.js"></script>
+<style>
+:root{--bg:#0b0b0d;--side:#101013;--card:#16161a;--bd:#26262c;--tx:#f4f4f5;--mut:#9a9aa5;--hov:#1f1f25;--inp:#0e0e11;color-scheme:dark}
+html.light{--bg:#f5f5f7;--side:#fff;--card:#fff;--bd:#e4e4e8;--tx:#18181b;--mut:#6b6b76;--hov:#f0f0f3;--inp:#fff;color-scheme:light}
+body{background:var(--bg);color:var(--tx);font-family:Inter,ui-sans-serif,system-ui,sans-serif;transition:background .2s}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;transition:border-color .15s,box-shadow .15s}
+.card:hover{border-color:#f97316aa;box-shadow:0 8px 24px -12px #f9731655}
+.sq{width:32px;height:32px;display:grid;place-items:center;flex:none;border-radius:8px;background:var(--hov);border:1px solid var(--bd);color:var(--mut);transition:.15s}
+.sq:hover{color:var(--tx);border-color:var(--mut)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:0 12px;height:36px;border-radius:8px;border:1px solid var(--bd);background:var(--card);font-size:13px;font-weight:500;white-space:nowrap;transition:.15s}
+.btn:hover{background:var(--hov)}
+.pri{background:var(--tx);color:var(--bg);border-color:var(--tx)}.pri:hover{background:var(--tx);opacity:.88}
+.inp{width:100%;background:var(--inp);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;font-size:14px;outline:none;color:var(--tx)}
+.inp:focus{border-color:#f97316}
+.mut{color:var(--mut)}
+.menu{background:var(--card);border:1px solid var(--bd);border-radius:10px;box-shadow:0 16px 40px -8px #0008;padding:4px}
+.mi{display:flex;gap:10px;align-items:center;width:100%;padding:8px 10px;font-size:14px;text-align:left;border-radius:6px}
+.mi:hover,.mi.on{background:var(--hov)}.danger{color:#f43f5e}
+.nav{display:flex;align-items:center;justify-content:space-between;width:100%;padding:8px 10px;border-radius:8px;font-size:14px;font-weight:500;color:var(--mut)}
+.nav:hover{background:var(--hov);color:var(--tx)}.nav.on{background:var(--hov);color:var(--tx)}
+.chip{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--hov);border:1px solid var(--bd);color:var(--mut)}
+.chip.on{background:#f97316;color:#fff;border-color:#f97316}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+</style>
 </head>
-<body class="bg-[#121212] text-zinc-100 font-sans">
-  <div id="root"></div>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useLayoutEffect, useRef, useCallback } = React;
 
-  <script type="text/babel">
-    const { useState, useEffect, useLayoutEffect, useRef } = React;
+const loadJSON = (k, fb) => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } };
+const saveJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { alert('Browser storage is full - try a smaller banner image.'); } };
+const normalizeUrl = u => (/^https?:\/\//i.test(u) ? u : `https://${u}`);
+const getDomain = u => { try { return new URL(normalizeUrl(u)).hostname.replace(/^www\./, ''); } catch { return ''; } };
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform);
 
-    const loadJSON = (key, fallback) => {
-      try {
-        const raw = localStorage.getItem(key);
-        return raw ? JSON.parse(raw) : fallback;
-      } catch { return fallback; }
+const COLS = [
+  { id: 'entertainment', name: 'Entertainment', icon: '🎮' },
+  { id: 'development', name: 'Development', icon: '💻' },
+  { id: 'design', name: 'Design Resources', icon: '🎨' },
+  { id: 'reading', name: 'Reading List', icon: '📖' },
+  { id: 'tools', name: 'Tools', icon: '🛠️' },
+];
+const U = id => `https://images.unsplash.com/${id}?q=80&w=800&auto=format&fit=crop`;
+const PRESET = {
+  'youtube.com': U('photo-1611162617213-7d7a39e9b1d7'), 'twitch.tv': U('photo-1542751371-adc38448a05e'),
+  'github.com': U('photo-1618401471353-b98aedd04e11'), 'figma.com': U('photo-1609921212029-bb5a28e60960'),
+  'react.dev': U('photo-1633356122544-f134324a6cee'), 'spotify.com': U('photo-1614680376593-902f749f7b9c'),
+};
+const mk = (id, title, url, description, collection, tags) => ({ id, title, url, description, collection, tags, isFavorite: true, status: 'active', createdAt: Date.now() - id * 1000, bannerUrl: PRESET[getDomain(url)] || null });
+const SEED = [
+  mk(1, 'Twitch', 'https://twitch.tv', 'Live streaming platform for gamers, esports, music, and creative broadcasts.', 'entertainment', ['streaming']),
+  mk(2, 'YouTube', 'https://youtube.com', 'Watch videos, live streams, music, and tutorials from creators worldwide.', 'entertainment', ['video']),
+  mk(3, 'GitHub', 'https://github.com', 'Where the world builds software. Code hosting, version control, and collaboration.', 'development', ['code']),
+  mk(4, 'React Docs', 'https://react.dev', 'The official documentation for React - the library for web and native user interfaces.', 'development', ['code', 'docs']),
+  mk(5, 'Figma', 'https://figma.com', 'The collaborative interface design tool for teams to craft visual experiences.', 'design', ['design']),
+].map(b => ({ ...b, id: String(b.id) }));
+
+const P = {
+  open: <><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></>,
+  copy: <><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></>,
+  edit: <><path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></>,
+  archive: <><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></>,
+  trash: <><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>,
+  restore: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></>,
+  check: <path d="M20 6 9 17l-5-5"/>,
+  sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></>,
+  moon: <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>,
+  filter: <path d="M3 6h18M7 12h10M10 18h4"/>,
+  sort: <path d="m3 16 4 4 4-4M7 20V4M21 8l-4-4-4 4M17 4v16"/>,
+  grid: <><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></>,
+  list: <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>,
+  search: <><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>,
+  plus: <path d="M5 12h14M12 5v14"/>,
+  heart: <path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/>,
+  dots: <><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></>,
+  panel: <><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></>,
+  bookmark: <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16Z"/>,
+  star: <path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.3-6.2 3.3L7 14.2 2 9.3l6.9-1L12 2Z"/>,
+  folder: <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>,
+  tag: <><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="7.5" cy="7.5" r=".5"/></>,
+  chevron: <path d="m6 9 6 6 6-6"/>,
+  x: <path d="M18 6 6 18M6 6l12 12"/>,
+  image: <><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></>,
+};
+const Icon = ({ name, className = 'w-4 h-4', fill }) => (
+  <svg className={className} viewBox="0 0 24 24" fill={fill ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{P[name]}</svg>
+);
+
+// Portal popover: never clipped by cards, flips up when low on space, stays on-screen.
+function Pop({ rect, onClose, w = 192, children }) {
+  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+  useLayoutEffect(() => {
+    const h = ref.current.getBoundingClientRect().height, pad = 8;
+    let top = rect.bottom + 6;
+    if (top + h > innerHeight - pad) top = Math.max(pad, rect.top - 6 - h);
+    setPos({ top, left: Math.min(Math.max(pad, rect.right - w), innerWidth - w - pad) });
+  }, [rect, w]);
+  useEffect(() => {
+    const down = e => { if (ref.current && !ref.current.contains(e.target) && !e.target.closest('[data-trig]') && !e.target.closest('[role=menu]')) onClose(); };
+    const key = e => e.key === 'Escape' && onClose();
+    document.addEventListener('mousedown', down); document.addEventListener('keydown', key);
+    window.addEventListener('resize', onClose); const sc = e => { if (!(ref.current && ref.current.contains(e.target))) onClose(); };
+    window.addEventListener('scroll', sc, true);
+    return () => { document.removeEventListener('mousedown', down); document.removeEventListener('keydown', key); window.removeEventListener('resize', onClose); window.removeEventListener('scroll', sc, true); };
+  }, [onClose]);
+  return ReactDOM.createPortal(
+    <div ref={ref} role="menu" className="menu" style={{ position: 'fixed', width: w, zIndex: 100, maxHeight: 280, overflowY: 'auto', top: pos ? pos.top : 0, left: pos ? pos.left : 0, visibility: pos ? 'visible' : 'hidden' }}>{children}</div>,
+    document.body);
+}
+
+function Favicon({ url, title }) {
+  const d = getDomain(url);
+  const srcs = d ? [`https://www.google.com/s2/favicons?domain=${d}&sz=128`, `https://icons.duckduckgo.com/ip3/${d}.ico`] : [];
+  const [i, setI] = useState(0);
+  useEffect(() => setI(0), [d]);
+  if (i >= srcs.length) return <span className="font-bold text-lg uppercase">{(title || d || '?')[0]}</span>;
+  return <img src={srcs[i]} alt="" className="w-6 h-6 rounded object-contain" onError={() => setI(i + 1)} />;
+}
+
+// Custom dropdown (replaces the native <select>)
+function Select({ value, onChange, options }) {
+  const [r, setR] = useState(null);
+  const cur = options.find(o => o.value === value) || options[0];
+  return (<>
+    <button type="button" data-trig className="inp flex items-center gap-2 text-left" onClick={e => setR(r ? null : e.currentTarget.getBoundingClientRect())}>
+      <span className="flex-1 truncate">{cur ? cur.label : ''}</span><Icon name="chevron" className="w-4 h-4 mut" />
+    </button>
+    {r && <Pop rect={r} w={r.width} onClose={() => setR(null)}>
+      {options.map(o => <button type="button" key={o.value} className={`mi ${o.value === value ? 'on' : ''}`} onClick={() => { onChange(o.value); setR(null); }}><span className="flex-1 truncate">{o.label}</span>{o.value === value && <Icon name="check" />}</button>)}
+    </Pop>}
+  </>);
+}
+
+const EMPTY = { title: '', url: '', description: '', collection: '', tags: '', banner: '', isFavorite: false };
+
+function App() {
+  const [bookmarks, setBookmarks] = useState(() => {
+    const s = loadJSON('linkvault_bookmarks', null);
+    return Array.isArray(s) ? s.map(b => ({ status: 'active', tags: [], createdAt: Number(b.id) || 0, ...b })) : SEED;
+  });
+  const [collections, setCollections] = useState(() => { const s = loadJSON('linkvault_collections', null); return Array.isArray(s) ? s : COLS; });
+  const [theme, setTheme] = useState(() => loadJSON('linkvault_theme', 'dark'));
+  const [view, setView] = useState(() => loadJSON('linkvault_view', 'grid'));
+  const [sort, setSort] = useState(() => loadJSON('linkvault_sort', 'new'));
+  const [side, setSide] = useState(true);
+  const [tab, setTab] = useState('all');
+  const [col, setCol] = useState(null);
+  const [q, setQ] = useState('');
+  const [f, setF] = useState({ col: '', fav: false, banner: false, tag: '' });
+  const [pop, setPop] = useState(null);
+  const [form, setForm] = useState(EMPTY);
+  const [editingId, setEditingId] = useState(null);
+  const [modal, setModal] = useState(false);
+  const [colModal, setColModal] = useState(false);
+  const [newCol, setNewCol] = useState({ name: '', icon: '📌' });
+  const [toast, setToast] = useState('');
+  const searchRef = useRef(null);
+  const closePop = useCallback(() => setPop(null), []);
+
+  useEffect(() => saveJSON('linkvault_bookmarks', bookmarks), [bookmarks]);
+  useEffect(() => saveJSON('linkvault_collections', collections), [collections]);
+  useEffect(() => saveJSON('linkvault_view', view), [view]);
+  useEffect(() => saveJSON('linkvault_sort', sort), [sort]);
+  useEffect(() => { document.documentElement.className = theme; saveJSON('linkvault_theme', theme); }, [theme]);
+  useEffect(() => {
+    const k = e => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); searchRef.current && searchRef.current.focus(); }
+      if (e.key === 'Escape') { setModal(false); setColModal(false); }
     };
+    window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
+  }, []);
 
-    const normalizeUrl = (u) => (/^https?:\/\//i.test(u) ? u : `https://${u}`);
-    const getDomain = (u) => {
-      try { return new URL(normalizeUrl(u)).hostname.replace(/^www\./, ''); } catch { return ''; }
+  const say = m => { setToast(m); setTimeout(() => setToast(''), 1600); };
+  const patch = (id, p) => setBookmarks(prev => prev.map(b => b.id === id ? { ...b, ...p } : b));
+  const setStatus = (id, status) => { patch(id, { status }); closePop(); say(status === 'trashed' ? 'Moved to trash' : status === 'archived' ? 'Archived' : 'Restored'); };
+  const deleteForever = id => { if (confirm('Delete this link permanently?')) setBookmarks(p => p.filter(b => b.id !== id)); closePop(); };
+  const copy = async (text) => {
+    try { await navigator.clipboard.writeText(text); } catch { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch {} t.remove(); }
+    closePop(); say('Link copied');
+  };
+  const openAdd = () => { setEditingId(null); setForm({ ...EMPTY, collection: collections[0] ? collections[0].id : '' }); setModal(true); };
+  const openEdit = b => { setEditingId(b.id); setForm({ title: b.title, url: b.url, description: b.description || '', collection: b.collection, tags: (b.tags || []).join(', '), banner: b.bannerUrl || '', isFavorite: !!b.isFavorite }); setModal(true); closePop(); };
+
+  const pickImage = file => {
+    if (!file) return;
+    const fr = new FileReader();
+    fr.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const s = Math.min(1, 800 / img.width), c = document.createElement('canvas');
+        c.width = img.width * s; c.height = img.height * s;
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        setForm(p => ({ ...p, banner: c.toDataURL('image/jpeg', 0.8) }));
+      };
+      img.src = fr.result;
     };
+    fr.readAsDataURL(file);
+  };
 
-    const ICONS = {
-      open: <><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></>,
-      copy: <><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></>,
-      edit: <><path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></>,
-      archive: <><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></>,
-      trash: <><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>,
-      restore: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></>,
-      check: <path d="M20 6 9 17l-5-5"/>,
-    };
-    const Icon = ({ name, className = 'w-4 h-4' }) => (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{ICONS[name]}</svg>
-    );
+  const submit = e => {
+    e.preventDefault();
+    if (!form.title.trim() || !form.url.trim()) return;
+    const tags = [...new Set(form.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean))];
+    const base = { title: form.title.trim(), url: form.url.trim(), description: form.description.trim(), collection: form.collection, tags, isFavorite: form.isFavorite };
+    if (editingId) patch(editingId, { ...base, bannerUrl: form.banner || null });
+    else setBookmarks(p => [{ id: Date.now().toString(), status: 'active', createdAt: Date.now(), ...base, bannerUrl: form.banner || PRESET[getDomain(form.url)] || null }, ...p]);
+    setModal(false); say(editingId ? 'Changes saved' : 'Link added');
+  };
 
-    const MENU_ITEM = 'w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left text-zinc-300 hover:bg-zinc-800 transition';
+  const addCollection = e => {
+    e.preventDefault();
+    if (!newCol.name.trim()) return;
+    const base = newCol.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'collection';
+    let id = base, n = 2; while (collections.some(c => c.id === id)) id = `${base}-${n++}`;
+    setCollections(p => [...p, { id, name: newCol.name.trim(), icon: newCol.icon || '📌' }]);
+    setNewCol({ name: '', icon: '📌' }); setColModal(false);
+  };
 
-    // Renders in a portal on <body> so the card's overflow-hidden / transform can't clip or cover it.
-    // Opens downward, flips upward if there isn't room, and stays inside the viewport.
-    function ActionMenu({ anchorRect, onClose, children }) {
-      const ref = useRef(null);
-      const [pos, setPos] = useState(null);
+  const active = bookmarks.filter(b => b.status === 'active');
+  const allTags = [...new Set(active.flatMap(b => b.tags || []))].sort();
+  const nFilters = [f.col, f.fav, f.banner, f.tag].filter(Boolean).length;
+  const ql = q.toLowerCase();
+  const shown = bookmarks.filter(b => {
+    if (ql && !(b.title + ' ' + b.url + ' ' + (b.description || '') + ' ' + (b.tags || []).join(' ')).toLowerCase().includes(ql)) return false;
+    if (tab === 'trash') return b.status === 'trashed';
+    if (tab === 'archive') return b.status === 'archived';
+    if (b.status !== 'active') return false;
+    if (col && b.collection !== col) return false;
+    if (tab === 'fav' && !b.isFavorite) return false;
+    if (f.col && b.collection !== f.col) return false;
+    if (f.fav && !b.isFavorite) return false;
+    if (f.banner && !b.bannerUrl) return false;
+    if (f.tag && !(b.tags || []).includes(f.tag)) return false;
+    return true;
+  }).sort((a, b) => sort === 'name' ? a.title.localeCompare(b.title) : sort === 'old' ? a.createdAt - b.createdAt : b.createdAt - a.createdAt);
 
-      useLayoutEffect(() => {
-        const m = ref.current.getBoundingClientRect();
-        const gap = 6, pad = 8;
-        let top = anchorRect.bottom + gap;
-        if (top + m.height > window.innerHeight - pad) {
-          top = Math.max(pad, anchorRect.top - gap - m.height);
-        }
-        const left = Math.min(Math.max(pad, anchorRect.right - m.width), window.innerWidth - m.width - pad);
-        setPos({ top, left });
-      }, [anchorRect]);
+  const count = s => bookmarks.filter(b => b.status === s).length;
+  const title = col ? (collections.find(c => c.id === col) || {}).name : { all: 'All Bookmarks', fav: 'Favorites', archive: 'Archive', trash: 'Trash' }[tab];
+  const nav = (t, c = null) => { setTab(t); setCol(c); };
+  const trig = (id, type) => e => { const r = e.currentTarget.getBoundingClientRect(); setPop(pop && pop.id === id && pop.type === type ? null : { id, type, rect: r }); };
+  const popBm = pop && pop.type === 'menu' ? bookmarks.find(b => b.id === pop.id) : null;
 
-      useEffect(() => {
-        const onDown = (e) => {
-          if (ref.current && !ref.current.contains(e.target) && !e.target.closest('[data-menu-trigger]')) onClose();
-        };
-        const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-        document.addEventListener('mousedown', onDown);
-        document.addEventListener('keydown', onKey);
-        window.addEventListener('resize', onClose);
-        window.addEventListener('scroll', onClose, true);
-        return () => {
-          document.removeEventListener('mousedown', onDown);
-          document.removeEventListener('keydown', onKey);
-          window.removeEventListener('resize', onClose);
-          window.removeEventListener('scroll', onClose, true);
-        };
-      }, [onClose]);
+  const stats = [
+    ['bookmark', active.length, 'Total Bookmarks', 'text-blue-500 bg-blue-500/10'],
+    ['star', active.filter(b => b.isFavorite).length, 'Favorites', 'text-amber-500 bg-amber-500/10'],
+    ['folder', collections.length, 'Collections', 'text-purple-500 bg-purple-500/10'],
+    ['tag', allTags.length, 'Tags Used', 'text-emerald-500 bg-emerald-500/10'],
+  ];
+  const NavBtn = ({ on, onClick, icon, label, n }) => (
+    <button onClick={onClick} className={`nav ${on ? 'on' : ''}`}><span className="flex items-center gap-2.5"><span className="w-5 text-center">{icon}</span>{label}</span><span className="text-xs mut">{n}</span></button>
+  );
 
-      return ReactDOM.createPortal(
-        <div
-          ref={ref}
-          role="menu"
-          style={{ position: 'fixed', top: pos ? pos.top : 0, left: pos ? pos.left : 0, visibility: pos ? 'visible' : 'hidden' }}
-          className="w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-2xl py-1 z-[100]"
-        >
-          {children}
-        </div>,
-        document.body
-      );
-    }
-
-    const INITIAL_COLLECTIONS = [
-      { id: 'entertainment', name: 'Entertainment', icon: '🎮' },
-      { id: 'development', name: 'Development', icon: '💻' },
-      { id: 'design', name: 'Design Resources', icon: '🎨' },
-      { id: 'reading', name: 'Reading List', icon: '📖' },
-      { id: 'tools', name: 'Tools', icon: '🛠️' },
-    ];
-
-    const PRESET_BANNERS = {
-      'youtube.com': 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=800&auto=format&fit=crop',
-      'twitch.tv': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=800&auto=format&fit=crop',
-      'github.com': 'https://images.unsplash.com/photo-1618401471353-b98aedd04e11?q=80&w=800&auto=format&fit=crop',
-      'figma.com': 'https://images.unsplash.com/photo-1609921212029-bb5a28e60960?q=80&w=800&auto=format&fit=crop',
-      'react.dev': 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=800&auto=format&fit=crop',
-      'spotify.com': 'https://images.unsplash.com/photo-1614680376593-902f749f7b9c?q=80&w=800&auto=format&fit=crop'
-    };
-
-    const INITIAL_BOOKMARKS = [
-      {
-        id: '1',
-        title: 'Twitch',
-        url: 'https://twitch.tv',
-        description: 'Live streaming platform for gamers, esports, music, and creative broadcasts.',
-        collection: 'entertainment',
-        isFavorite: true,
-        status: 'active',
-        bannerUrl: PRESET_BANNERS['twitch.tv']
-      },
-      {
-        id: '2',
-        title: 'YouTube',
-        url: 'https://youtube.com',
-        description: 'Watch videos, live streams, music, and tutorials from creators worldwide.',
-        collection: 'entertainment',
-        isFavorite: true,
-        status: 'active',
-        bannerUrl: PRESET_BANNERS['youtube.com']
-      },
-      {
-        id: '3',
-        title: 'GitHub',
-        url: 'https://github.com',
-        description: 'Where the world builds software. Code hosting, version control, and collaboration.',
-        collection: 'development',
-        isFavorite: true,
-        status: 'active',
-        bannerUrl: PRESET_BANNERS['github.com']
-      },
-      {
-        id: '4',
-        title: 'React Docs',
-        url: 'https://react.dev',
-        description: 'The official documentation for React - the library for web and native user interfaces.',
-        collection: 'development',
-        isFavorite: true,
-        status: 'active',
-        bannerUrl: PRESET_BANNERS['react.dev']
-      },
-      {
-        id: '5',
-        title: 'Figma',
-        url: 'https://figma.com',
-        description: 'The collaborative interface design tool for teams to craft visual experiences.',
-        collection: 'design',
-        isFavorite: true,
-        status: 'active',
-        bannerUrl: PRESET_BANNERS['figma.com']
-      }
-    ];
-
-    function App() {
-      const [bookmarks, setBookmarks] = useState(() => {
-        const saved = loadJSON('linkvault_bookmarks', null);
-        // older saves have no `status`; default them to active
-        return Array.isArray(saved) ? saved.map(b => ({ status: 'active', ...b })) : INITIAL_BOOKMARKS;
-      });
-
-      const [collections, setCollections] = useState(() => {
-        const saved = loadJSON('linkvault_collections', null);
-        return Array.isArray(saved) ? saved : INITIAL_COLLECTIONS;
-      });
-
-      const [activeTab, setActiveTab] = useState('all');
-      const [activeCollection, setActiveCollection] = useState(null);
-      const [searchQuery, setSearchQuery] = useState('');
-      const [menu, setMenu] = useState(null); // { id, rect }
-      const [editingId, setEditingId] = useState(null);
-      const [copiedId, setCopiedId] = useState(null);
-      const closeMenu = React.useCallback(() => setMenu(null), []);
-      const [isModalOpen, setIsModalOpen] = useState(false);
-      const [isNewCollectionModalOpen, setIsNewCollectionModalOpen] = useState(false);
-
-      const [formData, setFormData] = useState({
-        title: '',
-        url: '',
-        description: '',
-        collection: 'development',
-        isFavorite: false
-      });
-
-      const [newCollectionData, setNewCollectionData] = useState({ name: '', icon: '📌' });
-
-      useEffect(() => {
-        localStorage.setItem('linkvault_bookmarks', JSON.stringify(bookmarks));
-      }, [bookmarks]);
-
-      useEffect(() => {
-        localStorage.setItem('linkvault_collections', JSON.stringify(collections));
-      }, [collections]);
-
-      const toggleFavorite = (id) => {
-        setBookmarks(prev => prev.map(b => b.id === id ? { ...b, isFavorite: !b.isFavorite } : b));
-      };
-
-      const setStatus = (id, status) => {
-        setBookmarks(prev => prev.map(b => b.id === id ? { ...b, status } : b));
-        closeMenu();
-      };
-
-      const deleteForever = (id) => {
-        if (window.confirm('Delete this link permanently? This cannot be undone.')) {
-          setBookmarks(prev => prev.filter(b => b.id !== id));
-        }
-        closeMenu();
-      };
-
-      const copyToClipboard = async (text, id) => {
-        try {
-          await navigator.clipboard.writeText(text);
-        } catch {
-          const ta = document.createElement('textarea');
-          ta.value = text;
-          document.body.appendChild(ta);
-          ta.select();
-          try { document.execCommand('copy'); } catch {}
-          ta.remove();
-        }
-        setCopiedId(id);
-        setTimeout(() => setCopiedId(null), 1500);
-        closeMenu();
-      };
-
-      const openEdit = (bm) => {
-        setEditingId(bm.id);
-        setFormData({ title: bm.title, url: bm.url, description: bm.description || '', collection: bm.collection, isFavorite: !!bm.isFavorite });
-        setIsModalOpen(true);
-        closeMenu();
-      };
-
-      const openAdd = () => {
-        setEditingId(null);
-        setFormData({ title: '', url: '', description: '', collection: collections[0] ? collections[0].id : '', isFavorite: false });
-        setIsModalOpen(true);
-      };
-
-      const closeModal = () => { setIsModalOpen(false); setEditingId(null); };
-
-      const handleCreateOrUpdate = (e) => {
-        e.preventDefault();
-        if (!formData.title.trim() || !formData.url.trim()) return;
-        const bannerUrl = PRESET_BANNERS[getDomain(formData.url)] || null;
-
-        if (editingId) {
-          setBookmarks(prev => prev.map(b => b.id === editingId ? { ...b, ...formData, bannerUrl } : b));
-        } else {
-          setBookmarks(prev => [{ id: Date.now().toString(), status: 'active', ...formData, bannerUrl }, ...prev]);
-        }
-        closeModal();
-      };
-
-      const handleAddCollection = (e) => {
-        e.preventDefault();
-        if (!newCollectionData.name) return;
-        let baseId = newCollectionData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'collection';
-        let id = baseId, n = 2;
-        while (collections.some(c => c.id === id)) id = `${baseId}-${n++}`;
-        const newCol = {
-          id,
-          name: newCollectionData.name,
-          icon: newCollectionData.icon || '📌'
-        };
-        setCollections(prev => [...prev, newCol]);
-        setNewCollectionData({ name: '', icon: '📌' });
-        setIsNewCollectionModalOpen(false);
-      };
-
-      const activeBookmarks = bookmarks.filter(b => b.status === 'active');
-      const archivedCount = bookmarks.filter(b => b.status === 'archived').length;
-      const trashedCount = bookmarks.filter(b => b.status === 'trashed').length;
-
-      const filteredBookmarks = bookmarks.filter(bm => {
-        const matchesSearch = bm.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                              bm.url.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              bm.description.toLowerCase().includes(searchQuery.toLowerCase());
-
-        if (!matchesSearch) return false;
-        if (activeTab === 'trash') return bm.status === 'trashed';
-        if (activeTab === 'archive') return bm.status === 'archived';
-        if (bm.status !== 'active') return false;
-        if (activeCollection) return bm.collection === activeCollection;
-        if (activeTab === 'favorites') return bm.isFavorite;
-        return true;
-      });
-
-      return (
-        <div className="flex h-screen bg-[#121212] text-zinc-100 font-sans overflow-hidden">
-          {/* Sidebar */}
-          <aside className="w-64 bg-[#18181b] border-r border-zinc-800 flex flex-col justify-between">
-            <div className="p-4 space-y-6 overflow-y-auto">
-              <div className="flex items-center space-x-2 px-2">
-                <div className="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center font-bold text-white shadow-lg shadow-orange-600/30">
-                  LV
-                </div>
-                <span className="font-bold text-lg tracking-tight">LinkVault</span>
+  return (
+    <div className="flex h-screen overflow-hidden">
+      {side && (
+        <aside className="w-64 flex-none flex flex-col border-r" style={{ background: 'var(--side)', borderColor: 'var(--bd)' }}>
+          <div className="p-4 flex-1 overflow-y-auto space-y-5">
+            <div className="flex items-center gap-2.5 px-1">
+              <div className="w-8 h-8 rounded-lg bg-orange-600 grid place-items-center font-bold text-white text-sm shadow-lg shadow-orange-600/30">LV</div>
+              <span className="font-bold text-lg tracking-tight">LinkVault</span>
+            </div>
+            <nav className="space-y-0.5">
+              <NavBtn on={tab === 'all' && !col} onClick={() => nav('all')} icon="📑" label="All Bookmarks" n={count('active')} />
+              <NavBtn on={tab === 'fav' && !col} onClick={() => nav('fav')} icon="❤️" label="Favorites" n={active.filter(b => b.isFavorite).length} />
+              <NavBtn on={tab === 'archive'} onClick={() => nav('archive')} icon="🗄️" label="Archive" n={count('archived')} />
+              <NavBtn on={tab === 'trash'} onClick={() => nav('trash')} icon="🗑️" label="Trash" n={count('trashed')} />
+            </nav>
+            <div>
+              <div className="flex items-center justify-between px-2.5 mb-1.5 text-[11px] font-semibold tracking-wider uppercase mut">
+                <span>Collections</span>
+                <button onClick={() => setColModal(true)} className="hover:text-orange-500 flex items-center gap-1"><Icon name="plus" className="w-3 h-3" />New</button>
               </div>
-
-              <nav className="space-y-1">
-                <button
-                  onClick={() => { setActiveTab('all'); setActiveCollection(null); }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    activeTab === 'all' && !activeCollection ? 'bg-orange-600/10 text-orange-500' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <span>📑</span>
-                    <span>All Bookmarks</span>
-                  </div>
-                  <span className="text-xs bg-zinc-800 px-2 py-0.5 rounded-full">{activeBookmarks.length}</span>
-                </button>
-
-                <button
-                  onClick={() => { setActiveTab('favorites'); setActiveCollection(null); }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    activeTab === 'favorites' && !activeCollection ? 'bg-orange-600/10 text-orange-500' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <span>❤️</span>
-                    <span>Favorites</span>
-                  </div>
-                  <span className="text-xs bg-zinc-800 px-2 py-0.5 rounded-full">{activeBookmarks.filter(b => b.isFavorite).length}</span>
-                </button>
-              
-                <button
-                  onClick={() => { setActiveTab('archive'); setActiveCollection(null); }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    activeTab === 'archive' && !activeCollection ? 'bg-orange-600/10 text-orange-500' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <span>🗄️</span>
-                    <span>Archive</span>
-                  </div>
-                  <span className="text-xs bg-zinc-800 px-2 py-0.5 rounded-full">{archivedCount}</span>
-                </button>
-
-                <button
-                  onClick={() => { setActiveTab('trash'); setActiveCollection(null); }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
-                    activeTab === 'trash' && !activeCollection ? 'bg-orange-600/10 text-orange-500' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <span>🗑️</span>
-                    <span>Trash</span>
-                  </div>
-                  <span className="text-xs bg-zinc-800 px-2 py-0.5 rounded-full">{trashedCount}</span>
-                </button>
-              </nav>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between px-3 text-xs font-semibold text-zinc-500 tracking-wider uppercase">
-                  <span>Collections</span>
-                  <button 
-                    onClick={() => setIsNewCollectionModalOpen(true)}
-                    className="hover:text-orange-400 p-0.5 rounded transition"
-                  >
-                    + New
-                  </button>
-                </div>
-
-                <div className="space-y-0.5">
-                  {collections.map(col => {
-                    const count = activeBookmarks.filter(b => b.collection === col.id).length;
-                    return (
-                      <button
-                        key={col.id}
-                        onClick={() => { setActiveCollection(col.id); setActiveTab('collection'); }}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition ${
-                          activeCollection === col.id ? 'bg-orange-600/10 text-orange-500' : 'text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
-                        }`}
-                      >
-                        <div className="flex items-center space-x-2.5">
-                          <span>{col.icon}</span>
-                          <span>{col.name}</span>
-                        </div>
-                        <span className="text-xs text-zinc-500">{count}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="space-y-0.5">
+                {collections.map(c => <NavBtn key={c.id} on={col === c.id} onClick={() => nav('collection', c.id)} icon={c.icon} label={c.name} n={active.filter(b => b.collection === c.id).length} />)}
               </div>
             </div>
+          </div>
+          <div className="p-4 border-t text-xs mut flex justify-between" style={{ borderColor: 'var(--bd)' }}><span>LinkVault v2.0</span><span className="text-orange-500 font-mono">Personal Vault</span></div>
+        </aside>
+      )}
 
-            <div className="p-4 border-t border-zinc-800 text-xs text-zinc-500 flex items-center justify-between">
-              <span>LinkVault v1.0</span>
-              <span className="text-orange-500 font-mono">Personal Vault</span>
+      <main className="flex-1 min-w-0 flex flex-col">
+        <header className="flex-none flex items-center gap-2 px-4 h-16 border-b" style={{ borderColor: 'var(--bd)' }}>
+          <button className="sq" title="Toggle sidebar" onClick={() => setSide(!side)}><Icon name="panel" /></button>
+          <h1 className="font-semibold ml-1 mr-auto truncate">{title}</h1>
+          <div className="relative hidden md:block w-64">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 mut"><Icon name="search" /></span>
+            <input ref={searchRef} value={q} onChange={e => setQ(e.target.value)} placeholder="Search links, tags…" className="inp" style={{ paddingLeft: 36, paddingRight: 64, height: 36 }} />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 chip pointer-events-none">{IS_MAC ? '⌘K' : 'Ctrl K'}</span>
+          </div>
+          <div className="flex rounded-lg border p-0.5" style={{ borderColor: 'var(--bd)' }}>
+            {['grid', 'list'].map(v => <button key={v} title={v + ' view'} onClick={() => setView(v)} className={`w-8 h-7 grid place-items-center rounded-md ${view === v ? 'bg-[var(--hov)]' : 'mut'}`}><Icon name={v} /></button>)}
+          </div>
+          <button data-trig className="btn" onClick={trig('sort', 'sort')}><Icon name="sort" />{{ new: 'Newest', old: 'Oldest', name: 'A–Z' }[sort]}</button>
+          <button data-trig className="btn" onClick={trig('filter', 'filter')}><Icon name="filter" />Filter{nFilters > 0 && <span className="bg-orange-500 text-white text-[11px] rounded-full px-1.5">{nFilters}</span>}</button>
+          <button className="btn pri" onClick={openAdd}><Icon name="plus" />Add Bookmark</button>
+          <button className="sq" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to night mode'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><Icon name={theme === 'dark' ? 'moon' : 'sun'} /></button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="md:hidden mb-4"><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search…" className="inp" /></div>
+          {tab !== 'trash' && tab !== 'archive' && (
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
+              {stats.map(([ic, n, l, c]) => (
+                <div key={l} className="card p-4 flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg grid place-items-center ${c}`}><Icon name={ic} className="w-5 h-5" /></div>
+                  <div><div className="text-xl font-bold leading-tight">{n}</div><div className="text-xs mut">{l}</div></div>
+                </div>
+              ))}
             </div>
-          </aside>
+          )}
+          {nFilters > 0 && <button className="chip mb-4" onClick={() => setF({ col: '', fav: false, banner: false, tag: '' })}>Clear {nFilters} filter{nFilters > 1 ? 's' : ''} ✕</button>}
 
-          {/* Main Workspace */}
-          <main className="flex-1 flex flex-col min-w-0 bg-[#121212] overflow-hidden">
-            <header className="h-16 border-b border-zinc-800 flex items-center justify-between px-6 bg-[#18181b]/50">
-              <div className="flex items-center space-x-3 flex-1 max-w-md">
-                <input
-                  type="text"
-                  placeholder="Search links, titles..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-1.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-orange-500 transition"
-                />
-              </div>
+          {shown.length === 0 && <div className="text-center mut text-sm py-20">{tab === 'trash' ? 'Trash is empty.' : tab === 'archive' ? 'Nothing archived.' : 'No links found.'}</div>}
 
-              <button
-                onClick={openAdd}
-                className="flex items-center space-x-2 bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-lg font-medium text-sm transition shadow-lg shadow-orange-600/20"
-              >
-                <span>+ Add Link</span>
-              </button>
-            </header>
-
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredBookmarks.length === 0 && (
-                  <div className="col-span-full text-center text-zinc-500 text-sm py-16">
-                    {activeTab === 'trash' ? 'Trash is empty.' : activeTab === 'archive' ? 'Nothing archived.' : 'No links found.'}
+          <div className={view === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4' : 'flex flex-col gap-2'}>
+            {shown.map(b => {
+              const c = collections.find(x => x.id === b.collection);
+              const href = normalizeUrl(b.url);
+              const list = view === 'list';
+              const Actions = (
+                <div className="flex gap-1.5 flex-none">
+                  <button className={`sq ${b.isFavorite ? '!text-rose-500' : ''}`} title="Favorite" onClick={() => patch(b.id, { isFavorite: !b.isFavorite })}><Icon name="heart" fill={b.isFavorite} /></button>
+                  <button data-trig className="sq" title="More" aria-haspopup="menu" onClick={trig(b.id, 'menu')}><Icon name="dots" /></button>
+                </div>
+              );
+              if (list) return (
+                <div key={b.id} className="card flex items-center gap-3 p-3">
+                  <div className="sq !w-10 !h-10"><Favicon url={b.url} title={b.title} /></div>
+                  <div className="min-w-0 flex-1">
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="font-semibold hover:text-orange-500 hover:underline">{b.title}</a>
+                    <p className="text-xs mut truncate">{b.description || getDomain(b.url)}</p>
                   </div>
-                )}
-                {filteredBookmarks.map(bm => {
-                  const colObj = collections.find(c => c.id === bm.collection);
-                  return (
-                    <div
-                      key={bm.id}
-                      className="group relative bg-[#1c1c21] border border-zinc-800/80 rounded-xl overflow-hidden hover:border-zinc-700/80 hover:shadow-xl hover:shadow-orange-900/10 transition duration-200 flex flex-col justify-between"
-                    >
-                      {bm.bannerUrl && (
-                        <div className="h-28 w-full overflow-hidden bg-zinc-900 relative border-b border-zinc-800/50">
-                          <img 
-                            src={bm.bannerUrl} 
-                            alt={bm.title} 
-                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300 opacity-80"
-                          />
-                        </div>
-                      )}
-
-                      <div className="p-4 flex-1 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-sm font-bold border border-zinc-700/50">
-                              {colObj ? colObj.icon : '🌐'}
-                            </div>
-
-                            <div className="flex items-center space-x-1 relative">
-                              <button
-                                onClick={() => toggleFavorite(bm.id)}
-                                className={`p-1.5 rounded-lg transition ${
-                                  bm.isFavorite ? 'text-rose-500 hover:text-rose-400' : 'text-zinc-500 hover:text-zinc-300'
-                                }`}
-                              >
-                                {bm.isFavorite ? '❤️' : '🤍'}
-                              </button>
-
-                              <button
-                                data-menu-trigger
-                                aria-haspopup="menu"
-                                aria-expanded={menu && menu.id === bm.id}
-                                onClick={(e) => {
-                                  if (menu && menu.id === bm.id) return closeMenu();
-                                  setMenu({ id: bm.id, rect: e.currentTarget.getBoundingClientRect() });
-                                }}
-                                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition"
-                              >
-                                <span className="font-bold tracking-widest text-xs">•••</span>
-                              </button>
-
-                            </div>
-                          </div>
-
-                          <h3 className="font-semibold text-zinc-100 text-base mb-1 tracking-tight line-clamp-1">{bm.title}</h3>
-                          <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed mb-4">{bm.description}</p>
-                        </div>
-
-                        <div className="flex items-center justify-between text-xs text-zinc-500 pt-2 border-t border-zinc-800/40">
-                          <span className="flex items-center space-x-1.5">
-                            <span>{colObj?.icon}</span>
-                            <span>{colObj?.name}</span>
-                          </span>
-                          <a 
-                            href={bm.url.startsWith('http') ? bm.url : `https://${bm.url}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="hover:text-orange-400 transition"
-                          >
-                            {copiedId === bm.id ? <span className="text-orange-400 flex items-center gap-1"><Icon name="check" className="w-3.5 h-3.5" /> Copied</span> : '↗'}
-                          </a>
-                        </div>
-                      </div>
+                  <span className="hidden md:block text-xs mut whitespace-nowrap">{c && `${c.icon} ${c.name}`}</span>
+                  {Actions}
+                </div>
+              );
+              return (
+                <div key={b.id} className="card overflow-hidden flex flex-col">
+                  {b.bannerUrl && <a href={href} target="_blank" rel="noopener noreferrer" tabIndex={-1} className="block h-32 overflow-hidden" style={{ background: 'var(--hov)' }}><img src={b.bannerUrl} alt="" loading="lazy" className="w-full h-full object-cover" onError={e => { e.currentTarget.parentElement.style.display = 'none'; }} /></a>}
+                  <div className="p-4 flex-1 flex flex-col">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="sq !w-10 !h-10"><Favicon url={b.url} title={b.title} /></div>
+                      {Actions}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          </main>
-
-          {/* Card action menu (portal) */}
-          {menu && (() => {
-            const bm = bookmarks.find(b => b.id === menu.id);
-            if (!bm) return null;
-            return (
-              <ActionMenu anchorRect={menu.rect} onClose={closeMenu}>
-                {bm.status === 'trashed' ? (
-                  <>
-                    <button role="menuitem" className={MENU_ITEM} onClick={() => setStatus(bm.id, 'active')}>
-                      <Icon name="restore" /> Restore
-                    </button>
-                    <div className="my-1 border-t border-zinc-800" />
-                    <button role="menuitem" className={MENU_ITEM.replace('text-zinc-300', 'text-rose-400').replace('hover:bg-zinc-800', 'hover:bg-rose-950/40')} onClick={() => deleteForever(bm.id)}>
-                      <Icon name="trash" /> Delete Permanently
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <a role="menuitem" href={normalizeUrl(bm.url)} target="_blank" rel="noopener noreferrer" onClick={closeMenu} className={MENU_ITEM}>
-                      <Icon name="open" /> Open Link
-                    </a>
-                    <button role="menuitem" className={MENU_ITEM} onClick={() => copyToClipboard(normalizeUrl(bm.url), bm.id)}>
-                      <Icon name="copy" /> Copy Link
-                    </button>
-                    <button role="menuitem" className={MENU_ITEM} onClick={() => openEdit(bm)}>
-                      <Icon name="edit" /> Edit
-                    </button>
-                    {bm.status === 'archived' ? (
-                      <button role="menuitem" className={MENU_ITEM} onClick={() => setStatus(bm.id, 'active')}>
-                        <Icon name="restore" /> Unarchive
-                      </button>
-                    ) : (
-                      <button role="menuitem" className={MENU_ITEM} onClick={() => setStatus(bm.id, 'archived')}>
-                        <Icon name="archive" /> Archive
-                      </button>
-                    )}
-                    <div className="my-1 border-t border-zinc-800" />
-                    <button role="menuitem" className={MENU_ITEM.replace('text-zinc-300', 'text-rose-400').replace('hover:bg-zinc-800', 'hover:bg-rose-950/40')} onClick={() => setStatus(bm.id, 'trashed')}>
-                      <Icon name="trash" /> Move to Trash
-                    </button>
-                  </>
-                )}
-              </ActionMenu>
-            );
-          })()}
-
-          {/* Add / Edit Modal */}
-          {isModalOpen && (
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-[#18181b] border border-zinc-800 rounded-xl w-full max-w-md p-6 shadow-2xl">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-lg text-zinc-100">{editingId ? 'Edit Link' : 'Add New Link'}</h3>
-                  <button onClick={closeModal} className="text-zinc-500 hover:text-zinc-300">✕</button>
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="font-semibold text-base tracking-tight truncate hover:text-orange-500 hover:underline">{b.title}</a>
+                    <p className="text-sm mut clamp2 mt-1 mb-3 flex-1">{b.description || getDomain(b.url)}</p>
+                    {(b.tags || []).length > 0 && <div className="flex flex-wrap gap-1 mb-3">{b.tags.map(t => <button key={t} className="chip" onClick={() => setF({ ...f, tag: t })}>#{t}</button>)}</div>}
+                    <div className="flex items-center justify-between text-xs mut pt-3 border-t" style={{ borderColor: 'var(--bd)' }}>
+                      <span>{c && `${c.icon} ${c.name}`}</span>
+                      <span>{new Date(b.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                    </div>
+                  </div>
                 </div>
-                <form onSubmit={handleCreateOrUpdate} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-400 mb-1">Title</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. YouTube"
-                      value={formData.title}
-                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-orange-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-400 mb-1">URL</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. https://youtube.com"
-                      value={formData.url}
-                      onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-orange-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-400 mb-1">Collection</label>
-                    <select
-                      value={formData.collection}
-                      onChange={(e) => setFormData({ ...formData, collection: e.target.value })}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-orange-500"
-                    >
-                      {collections.map(c => (
-                        <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-400 mb-1">Description</label>
-                    <textarea
-                      rows={3}
-                      placeholder="Short summary of this link..."
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-orange-500"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-end space-x-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      className="px-4 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 rounded-lg text-sm font-medium bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-600/20"
-                    >
-                      {editingId ? 'Save Changes' : 'Save Link'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {/* New Collection Modal */}
-          {isNewCollectionModalOpen && (
-            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-[#18181b] border border-zinc-800 rounded-xl w-full max-w-sm p-6 shadow-2xl">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-lg text-zinc-100">Create Collection</h3>
-                  <button onClick={() => setIsNewCollectionModalOpen(false)} className="text-zinc-500 hover:text-zinc-300">✕</button>
-                </div>
-                <form onSubmit={handleAddCollection} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-400 mb-1">Emoji Icon</label>
-                    <input
-                      type="text"
-                      maxLength={2}
-                      value={newCollectionData.icon}
-                      onChange={(e) => setNewCollectionData({ ...newCollectionData, icon: e.target.value })}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-center text-zinc-100 focus:outline-none focus:border-orange-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-400 mb-1">Collection Name</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Gaming & Streams"
-                      value={newCollectionData.name}
-                      onChange={(e) => setNewCollectionData({ ...newCollectionData, name: e.target.value })}
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-orange-500"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-end space-x-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsNewCollectionModalOpen(false)}
-                      className="px-4 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:bg-zinc-800"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 rounded-lg text-sm font-medium bg-orange-600 hover:bg-orange-500 text-white"
-                    >
-                      Create
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
+              );
+            })}
+          </div>
         </div>
-      );
-    }
+      </main>
 
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
+      {pop && pop.type === 'sort' && (
+        <Pop rect={pop.rect} onClose={closePop} w={160}>
+          {[['new', 'Newest first'], ['old', 'Oldest first'], ['name', 'Name A–Z']].map(([k, l]) => (
+            <button key={k} className={`mi ${sort === k ? 'on' : ''}`} onClick={() => { setSort(k); closePop(); }}><span className="flex-1">{l}</span>{sort === k && <Icon name="check" />}</button>
+          ))}
+        </Pop>
+      )}
+      {pop && pop.type === 'filter' && (
+        <Pop rect={pop.rect} onClose={closePop} w={280}>
+          <div className="p-3 space-y-3">
+            <div><label className="text-xs mut block mb-1">Collection</label>
+              <Select value={f.col} onChange={v => setF({ ...f, col: v })} options={[{ value: '', label: 'All collections' }, ...collections.map(c => ({ value: c.id, label: `${c.icon} ${c.name}` }))]} /></div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.fav} onChange={e => setF({ ...f, fav: e.target.checked })} />Favorites only</label>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.banner} onChange={e => setF({ ...f, banner: e.target.checked })} />Has banner</label>
+            {allTags.length > 0 && <div><label className="text-xs mut block mb-1">Tag</label><div className="flex flex-wrap gap-1">{allTags.map(t => <button key={t} className={`chip ${f.tag === t ? 'on' : ''}`} onClick={() => setF({ ...f, tag: f.tag === t ? '' : t })}>#{t}</button>)}</div></div>}
+            <button className="btn w-full justify-center" onClick={() => setF({ col: '', fav: false, banner: false, tag: '' })}>Reset filters</button>
+          </div>
+        </Pop>
+      )}
+      {popBm && (
+        <Pop rect={pop.rect} onClose={closePop}>
+          {popBm.status === 'trashed' ? (<>
+            <button className="mi" onClick={() => setStatus(popBm.id, 'active')}><Icon name="restore" />Restore</button>
+            <div className="my-1 border-t" style={{ borderColor: 'var(--bd)' }} />
+            <button className="mi danger" onClick={() => deleteForever(popBm.id)}><Icon name="trash" />Delete Permanently</button>
+          </>) : (<>
+            <a className="mi" href={normalizeUrl(popBm.url)} target="_blank" rel="noopener noreferrer" onClick={closePop}><Icon name="open" />Open Link</a>
+            <button className="mi" onClick={() => copy(normalizeUrl(popBm.url))}><Icon name="copy" />Copy Link</button>
+            <button className="mi" onClick={() => openEdit(popBm)}><Icon name="edit" />Edit</button>
+            <button className="mi" onClick={() => setStatus(popBm.id, popBm.status === 'archived' ? 'active' : 'archived')}><Icon name={popBm.status === 'archived' ? 'restore' : 'archive'} />{popBm.status === 'archived' ? 'Unarchive' : 'Archive'}</button>
+            <div className="my-1 border-t" style={{ borderColor: 'var(--bd)' }} />
+            <button className="mi danger" onClick={() => setStatus(popBm.id, 'trashed')}><Icon name="trash" />Move to Trash</button>
+          </>)}
+        </Pop>
+      )}
+
+      {modal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm grid place-items-center p-4 z-50 overflow-y-auto" onMouseDown={e => e.target === e.currentTarget && setModal(false)}>
+          <form onSubmit={submit} className="card w-full max-w-lg p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between"><h3 className="font-semibold text-lg">{editingId ? 'Edit Link' : 'Add New Link'}</h3><button type="button" className="sq" onClick={() => setModal(false)}><Icon name="x" /></button></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs mut block mb-1">Title</label><input className="inp" required autoFocus value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. YouTube" /></div>
+              <div><label className="text-xs mut block mb-1">URL</label><input className="inp" required value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="youtube.com" /></div>
+            </div>
+            <div><label className="text-xs mut block mb-1">Description</label><textarea className="inp" rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Short summary…" /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="text-xs mut block mb-1">Collection</label><Select value={form.collection} onChange={v => setForm({ ...form, collection: v })} options={collections.map(c => ({ value: c.id, label: `${c.icon} ${c.name}` }))} /></div>
+              <div><label className="text-xs mut block mb-1">Tags (comma separated)</label><input className="inp" value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="code, docs" /></div>
+            </div>
+            <div>
+              <label className="text-xs mut block mb-1">Banner (optional)</label>
+              {form.banner ? (
+                <div className="relative h-32 rounded-lg overflow-hidden border" style={{ borderColor: 'var(--bd)' }}>
+                  <img src={form.banner} alt="" className="w-full h-full object-cover" />
+                  <button type="button" className="sq absolute top-2 right-2" title="Remove banner" onClick={() => setForm({ ...form, banner: '' })}><Icon name="x" /></button>
+                </div>
+              ) : <div className="h-20 rounded-lg border border-dashed grid place-items-center text-xs mut" style={{ borderColor: 'var(--bd)' }}>{editingId ? 'No banner' : 'Known sites (YouTube, GitHub…) get one automatically'}</div>}
+              <div className="flex gap-2 mt-2">
+                <input className="inp" placeholder="Paste image URL…" value={form.banner.startsWith('data:') ? '' : form.banner} onChange={e => setForm({ ...form, banner: e.target.value })} />
+                <label className="btn cursor-pointer"><Icon name="image" />Upload<input type="file" accept="image/*" hidden onChange={e => pickImage(e.target.files[0])} /></label>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.isFavorite} onChange={e => setForm({ ...form, isFavorite: e.target.checked })} />Add to favorites</label>
+            <div className="flex justify-end gap-2"><button type="button" className="btn" onClick={() => setModal(false)}>Cancel</button><button type="submit" className="btn pri">{editingId ? 'Save Changes' : 'Save Link'}</button></div>
+          </form>
+        </div>
+      )}
+
+      {colModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm grid place-items-center p-4 z-50" onMouseDown={e => e.target === e.currentTarget && setColModal(false)}>
+          <form onSubmit={addCollection} className="card w-full max-w-sm p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between"><h3 className="font-semibold text-lg">Create Collection</h3><button type="button" className="sq" onClick={() => setColModal(false)}><Icon name="x" /></button></div>
+            <div><label className="text-xs mut block mb-1">Emoji</label><input className="inp text-center" maxLength={2} value={newCol.icon} onChange={e => setNewCol({ ...newCol, icon: e.target.value })} /></div>
+            <div><label className="text-xs mut block mb-1">Name</label><input className="inp" required autoFocus value={newCol.name} onChange={e => setNewCol({ ...newCol, name: e.target.value })} placeholder="e.g. Gaming & Streams" /></div>
+            <div className="flex justify-end gap-2"><button type="button" className="btn" onClick={() => setColModal(false)}>Cancel</button><button type="submit" className="btn pri">Create</button></div>
+          </form>
+        </div>
+      )}
+
+      {toast && <div className="fixed bottom-5 left-1/2 -translate-x-1/2 card px-4 py-2 text-sm shadow-2xl z-[120] flex items-center gap-2"><Icon name="check" className="w-4 h-4 text-emerald-500" />{toast}</div>}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
 </body>
 </html>
