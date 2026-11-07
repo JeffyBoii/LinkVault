@@ -1,23 +1,11 @@
 // LinkVault service worker: makes the app installable and lets it open offline.
-const VERSION = 'linkvault-v1.1.0';
+const VERSION = 'linkvault-v1.1.1';
 const SHELL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'];
-const LIBS = [
-  'https://cdn.tailwindcss.com',
-  'https://unpkg.com/react@18.3.1/umd/react.production.min.js',
-  'https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js',
-  'https://unpkg.com/@babel/standalone@7.26.4/babel.min.js',
-];
 const IMG_CACHE = VERSION + '-img';
 const IMG_MAX = 80;
 
 self.addEventListener('install', e => {
-  e.waitUntil((async () => {
-    const c = await caches.open(VERSION);
-    await c.addAll(SHELL);
-    // libraries are cross-origin; fetch them in no-cors mode so they can be cached
-    await Promise.all(LIBS.map(u => fetch(new Request(u, { mode: 'no-cors' })).then(r => c.put(u, r)).catch(() => {})));
-    self.skipWaiting();
-  })());
+  e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -35,7 +23,7 @@ self.addEventListener('fetch', e => {
 
   // Page: network first so updates show up, cache when offline
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).then(r => { caches.open(VERSION).then(c => c.put('index.html', r.clone())); return r; })
+    e.respondWith(fetch(req).then(r => { const copy = r.clone(); caches.open(VERSION).then(c => c.put('index.html', copy)); return r; })
       .catch(() => caches.match('index.html')));
     return;
   }
@@ -54,6 +42,13 @@ self.addEventListener('fetch', e => {
     })());
     return;
   }
-  // Everything else (app files, libraries): cache first
-  e.respondWith(caches.match(req).then(hit => hit || fetch(req)));
+  // Libraries and app files: cache first. Each file is saved from the page's own request,
+  // so what we serve back always matches what the page asked for.
+  e.respondWith((async () => {
+    const hit = await caches.match(req);
+    if (hit) return hit;
+    const r = await fetch(req);
+    if (r && (r.ok || r.type === 'opaque')) { const copy = r.clone(); caches.open(VERSION).then(c => c.put(req, copy)); }
+    return r;
+  })());
 });

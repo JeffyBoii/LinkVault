@@ -307,7 +307,7 @@ function App() {
               </div>
             </div>
           </div>
-          <div className="p-4 border-t text-xs mut flex justify-between" style={{ borderColor: 'var(--bd)' }}><span>LinkVault v1.1.0</span><span className="text-orange-500 font-mono">Personal Vault</span></div>
+          <div className="p-4 border-t text-xs mut flex justify-between" style={{ borderColor: 'var(--bd)' }}><span>LinkVault v1.1.1</span><span className="text-orange-500 font-mono">Personal Vault</span></div>
         </aside>
       )}
 
@@ -479,6 +479,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(<App />);
 </script>
 <script>
 // Register the service worker (install + offline). Reload once when a new version takes over.
+// When opened as an installed app, fill the whole screen.
+if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+  try { window.moveTo(0, 0); window.resizeTo(screen.availWidth, screen.availHeight); } catch (e) {}
+}
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     const had = !!navigator.serviceWorker.controller;

@@ -7,6 +7,7 @@
 
 <p align="center">
   <img alt="runs in" src="https://img.shields.io/badge/runs%20in-any%20browser-orange">
+  <img alt="installable" src="https://img.shields.io/badge/PWA-installable-blue">
   <img alt="no build step" src="https://img.shields.io/badge/build%20step-none-lightgrey">
   <img alt="accounts" src="https://img.shields.io/badge/accounts-none-brightgreen">
   <img alt="tracking" src="https://img.shields.io/badge/tracking-none-brightgreen">
@@ -16,6 +17,7 @@
 <p align="center">
   <a href="https://jeffyboii.github.io/LinkVault/"><b>🚀 Open the app</b></a> ·
   <a href="#-features">Features</a> ·
+  <a href="#-install">Install</a> ·
   <a href="#-shortcuts">Shortcuts</a> ·
   <a href="#-run-your-own-copy">Run your own</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
@@ -67,6 +69,18 @@ It is a single static page. There is no sign-up, no ads and no tracking, and eve
 - Short pop-up messages for actions like copy and save
 - Your view, sort and theme are remembered between visits
 
+## 📲 Install
+
+LinkVault is an installable app that also works offline.
+
+| Device | How |
+|---|---|
+| **PC** | Open the link in Chrome, Edge or Brave and click the install icon at the right end of the address bar |
+| **Android** | Browser menu > *Add to Home Screen* (or *Install app*) |
+| **iPhone** | Safari > Share > *Add to Home Screen* |
+
+Links you click inside the installed app open in your browser, so the app window always stays on LinkVault.
+
 ## ⌨️ Shortcuts
 
 | Key | Action |
@@ -90,7 +104,8 @@ LinkVault is one static file, so there is nothing to build.
 
 1. **Fork** this repo, or upload `index.html` to your own repository.
 2. Go to **Settings > Pages**, choose **Deploy from a branch**, select `main` and `/ (root)`, then click **Save**.
-3. Wait a minute or two. Your site will be live at `https://<your-username>.github.io/<repo-name>/`.
+3. Make sure `index.html`, `manifest.json`, `sw.js` and the three `icon-*.png` files are all in the root folder.
+4. Wait a minute or two. Your site will be live at `https://<your-username>.github.io/<repo-name>/`.
 
 **Run locally:** open `index.html` in your browser, or serve the folder with any static server:
 
@@ -103,6 +118,7 @@ then open `http://localhost:8000`. An internet connection is needed because the 
 ## 🧱 Built with
 
 - Plain HTML, CSS and JavaScript in a single `index.html`
+- A web app manifest and service worker for install and offline support
 - [React](https://react.dev) 18, loaded from a CDN
 - [Babel Standalone](https://babeljs.io/docs/babel-standalone) so the page runs without a build step
 - [Tailwind CSS](https://tailwindcss.com/) (Play CDN) for styling
