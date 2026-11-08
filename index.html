@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>LinkVault - Your Bookmarks</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20viewBox=%220%200%2064%2064%22%3E%3Cdefs%3E%3ClinearGradient%20id=%22g%22%20x1=%220%22%20y1=%220%22%20x2=%221%22%20y2=%221%22%3E%3Cstop%20offset=%220%22%20stop-color=%22%23fb923c%22/%3E%3Cstop%20offset=%221%22%20stop-color=%22%23ea580c%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect%20width=%2264%22%20height=%2264%22%20rx=%2216%22%20fill=%22url%28%23g%29%22/%3E%3Cpath%20d=%22M20%2013h24a3%203%200%200%201%203%203v35l-15-9-15%209V16a3%203%200%200%201%203-3z%22%20fill=%22%23fff%22/%3E%3Ccircle%20cx=%2232%22%20cy=%2225%22%20r=%224.5%22%20fill=%22%23ea580c%22/%3E%3Cpath%20d=%22M30.2%2028h3.6l1.2%208h-6z%22%20fill=%22%23ea580c%22/%3E%3C/svg%3E" />
-<meta name="theme-color" content="#ea580c" />
+<meta name="theme-color" content="#0b0b0d" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -65,13 +65,13 @@ const PRESET = {
   'github.com': U('photo-1618401471353-b98aedd04e11'), 'figma.com': U('photo-1609921212029-bb5a28e60960'),
   'react.dev': U('photo-1633356122544-f134324a6cee'), 'spotify.com': U('photo-1614680376593-902f749f7b9c'),
 };
-const mk = (id, title, url, description, collection, tags) => ({ id, title, url, description, collection, tags, isFavorite: true, status: 'active', createdAt: Date.now() - id * 1000, bannerUrl: PRESET[getDomain(url)] || null });
+const mk = (id, title, url, description, collection) => ({ id, title, url, description, collection, isFavorite: true, status: 'active', createdAt: Date.now() - id * 1000, bannerUrl: PRESET[getDomain(url)] || null });
 const SEED = [
-  mk(1, 'Twitch', 'https://twitch.tv', 'Live streaming platform for gamers, esports, music, and creative broadcasts.', 'entertainment', ['streaming']),
-  mk(2, 'YouTube', 'https://youtube.com', 'Watch videos, live streams, music, and tutorials from creators worldwide.', 'entertainment', ['video']),
-  mk(3, 'GitHub', 'https://github.com', 'Where the world builds software. Code hosting, version control, and collaboration.', 'development', ['code']),
-  mk(4, 'React Docs', 'https://react.dev', 'The official documentation for React - the library for web and native user interfaces.', 'development', ['code', 'docs']),
-  mk(5, 'Figma', 'https://figma.com', 'The collaborative interface design tool for teams to craft visual experiences.', 'design', ['design']),
+  mk(1, 'Twitch', 'https://twitch.tv', 'Live streaming platform for gamers, esports, music, and creative broadcasts.', 'entertainment'),
+  mk(2, 'YouTube', 'https://youtube.com', 'Watch videos, live streams, music, and tutorials from creators worldwide.', 'entertainment'),
+  mk(3, 'GitHub', 'https://github.com', 'Where the world builds software. Code hosting, version control, and collaboration.', 'development'),
+  mk(4, 'React Docs', 'https://react.dev', 'The official documentation for React - the library for web and native user interfaces.', 'development'),
+  mk(5, 'Figma', 'https://figma.com', 'The collaborative interface design tool for teams to craft visual experiences.', 'design'),
 ].map(b => ({ ...b, id: String(b.id) }));
 
 const P = {
@@ -96,8 +96,10 @@ const P = {
   bookmark: <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16Z"/>,
   star: <path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8-6.2-3.3-6.2 3.3L7 14.2 2 9.3l6.9-1L12 2Z"/>,
   folder: <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>,
-  tag: <><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="7.5" cy="7.5" r=".5"/></>,
   chevron: <path d="m6 9 6 6 6-6"/>,
+  up: <path d="m18 15-6-6-6 6"/>,
+  download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></>,
+  upload: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></>,
   x: <path d="M18 6 6 18M6 6l12 12"/>,
   image: <><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></>,
 };
@@ -163,55 +165,71 @@ function Cover({ b, href }) {
   );
 }
 
-const EMPTY = { title: '', url: '', description: '', collection: '', tags: '', banner: '', isFavorite: false };
+const EMPTY = { title: '', url: '', description: '', collection: '', banner: '', isFavorite: false };
 
 function App() {
   const [bookmarks, setBookmarks] = useState(() => {
     const s = loadJSON('linkvault_bookmarks', null);
-    return Array.isArray(s) ? s.map(b => ({ status: 'active', tags: [], createdAt: Number(b.id) || 0, ...b })) : SEED;
+    return Array.isArray(s) ? s.map(b => ({ status: 'active', createdAt: Number(b.id) || 0, ...b })) : SEED;
   });
   const [collections, setCollections] = useState(() => { const s = loadJSON('linkvault_collections', null); return Array.isArray(s) ? s : COLS; });
   const [theme, setTheme] = useState(() => loadJSON('linkvault_theme', 'dark'));
   const [view, setView] = useState(() => loadJSON('linkvault_view', 'grid'));
-  const [sort, setSort] = useState(() => loadJSON('linkvault_sort', 'new'));
+  const [sort, setSort] = useState(() => loadJSON('linkvault_sort_v2', 'default'));
   const [side, setSide] = useState(true);
   const [tab, setTab] = useState('all');
   const [col, setCol] = useState(null);
   const [q, setQ] = useState('');
-  const [f, setF] = useState({ col: '', fav: false, banner: false, tag: '' });
+  const [f, setF] = useState({ col: '', fav: false, banner: false });
   const [pop, setPop] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [editingId, setEditingId] = useState(null);
   const [modal, setModal] = useState(false);
   const [colModal, setColModal] = useState(false);
   const [newCol, setNewCol] = useState({ name: '', icon: '📌' });
-  const [toast, setToast] = useState('');
+  const [toast, setToast] = useState(null);
+  const [editCol, setEditCol] = useState(null);
+  const [drag, setDrag] = useState(null); // { id, over, after }
+  const tRef = useRef(null);
+  const addRef = useRef(null);
   const searchRef = useRef(null);
   const closePop = useCallback(() => setPop(null), []);
 
   useEffect(() => saveJSON('linkvault_bookmarks', bookmarks), [bookmarks]);
   useEffect(() => saveJSON('linkvault_collections', collections), [collections]);
   useEffect(() => saveJSON('linkvault_view', view), [view]);
-  useEffect(() => saveJSON('linkvault_sort', sort), [sort]);
-  useEffect(() => { document.documentElement.className = theme; saveJSON('linkvault_theme', theme); }, [theme]);
+  useEffect(() => saveJSON('linkvault_sort_v2', sort), [sort]);
+  useEffect(() => { document.documentElement.className = theme; saveJSON('linkvault_theme', theme);
+    const tc = document.querySelector('meta[name=theme-color]'); if (tc) tc.setAttribute('content', theme === 'dark' ? '#0b0b0d' : '#ffffff'); }, [theme]);
   useEffect(() => {
     const k = e => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); searchRef.current && searchRef.current.focus(); }
+      const typing = /INPUT|TEXTAREA|SELECT/.test(e.target.tagName || '');
+      if (!typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (e.key === 'n') { e.preventDefault(); addRef.current && addRef.current(); }
+        if (e.key === '/') { e.preventDefault(); searchRef.current && searchRef.current.focus(); }
+      }
       if (e.key === 'Escape') { setModal(false); setColModal(false); }
     };
     window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
   }, []);
 
-  const say = m => { setToast(m); setTimeout(() => setToast(''), 1600); };
+  const say = (m, undo) => { setToast({ m, undo }); clearTimeout(tRef.current); tRef.current = setTimeout(() => setToast(null), undo ? 5500 : 1600); };
   const patch = (id, p) => setBookmarks(prev => prev.map(b => b.id === id ? { ...b, ...p } : b));
-  const setStatus = (id, status) => { patch(id, { status }); closePop(); say(status === 'trashed' ? 'Moved to trash' : status === 'archived' ? 'Archived' : 'Restored'); };
+  const setStatus = (id, status) => {
+    const prev = (bookmarks.find(b => b.id === id) || {}).status;
+    patch(id, { status }); closePop();
+    say(status === 'trashed' ? 'Moved to trash' : status === 'archived' ? 'Archived' : 'Restored', status !== 'active' ? () => patch(id, { status: prev }) : undefined);
+  };
   const deleteForever = id => { if (confirm('Delete this link permanently?')) setBookmarks(p => p.filter(b => b.id !== id)); closePop(); };
   const copy = async (text) => {
     try { await navigator.clipboard.writeText(text); } catch { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch {} t.remove(); }
     closePop(); say('Link copied');
   };
-  const openAdd = () => { setEditingId(null); setForm({ ...EMPTY, collection: collections[0] ? collections[0].id : '' }); setModal(true); };
-  const openEdit = b => { setEditingId(b.id); setForm({ title: b.title, url: b.url, description: b.description || '', collection: b.collection, tags: (b.tags || []).join(', '), banner: b.bannerUrl || '', isFavorite: !!b.isFavorite }); setModal(true); closePop(); };
+  const openAdd = () => { setEditingId(null); setForm({ ...EMPTY, collection: col && col !== '__none' ? col : (collections[0] ? collections[0].id : '') }); setModal(true); };
+  addRef.current = openAdd;
+  const visit = b => patch(b.id, { visits: (b.visits || 0) + 1 });
+  const openEdit = b => { setEditingId(b.id); setForm({ title: b.title, url: b.url, description: b.description || '', collection: b.collection, banner: b.bannerUrl || '', isFavorite: !!b.isFavorite }); setModal(true); closePop(); };
 
   const pickImage = file => {
     if (!file) return;
@@ -232,8 +250,8 @@ function App() {
   const submit = e => {
     e.preventDefault();
     if (!form.title.trim() || !form.url.trim()) return;
-    const tags = [...new Set(form.tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean))];
-    const base = { title: form.title.trim(), url: form.url.trim(), description: form.description.trim(), collection: form.collection, tags, isFavorite: form.isFavorite };
+    if (!editingId && bookmarks.some(b => b.status !== 'trashed' && b.url.trim().toLowerCase() === form.url.trim().toLowerCase()) && !confirm('You already saved this link. Add it anyway?')) return;
+    const base = { title: form.title.trim(), url: form.url.trim(), description: form.description.trim(), collection: form.collection, isFavorite: form.isFavorite };
     if (editingId) patch(editingId, { ...base, bannerUrl: form.banner || null });
     else setBookmarks(p => [{ id: Date.now().toString(), status: 'active', createdAt: Date.now(), ...base, bannerUrl: form.banner || PRESET[getDomain(form.url)] || null }, ...p]);
     setModal(false); say(editingId ? 'Changes saved' : 'Link added');
@@ -242,32 +260,89 @@ function App() {
   const addCollection = e => {
     e.preventDefault();
     if (!newCol.name.trim()) return;
-    const base = newCol.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'collection';
-    let id = base, n = 2; while (collections.some(c => c.id === id)) id = `${base}-${n++}`;
-    setCollections(p => [...p, { id, name: newCol.name.trim(), icon: newCol.icon || '📌' }]);
-    setNewCol({ name: '', icon: '📌' }); setColModal(false);
+    if (editCol) {
+      setCollections(p => p.map(c => c.id === editCol ? { ...c, name: newCol.name.trim(), icon: newCol.icon || '📌' } : c));
+    } else {
+      const base = newCol.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'collection';
+      let id = base, n = 2; while (collections.some(c => c.id === id)) id = `${base}-${n++}`;
+      setCollections(p => [...p, { id, name: newCol.name.trim(), icon: newCol.icon || '📌' }]);
+    }
+    setNewCol({ name: '', icon: '📌' }); setEditCol(null); setColModal(false);
   };
+  const openColNew = () => { setEditCol(null); setNewCol({ name: '', icon: '📌' }); setColModal(true); };
+  const openColEdit = c => { setEditCol(c.id); setNewCol({ name: c.name, icon: c.icon }); setColModal(true); closePop(); };
+  const deleteCollection = c => {
+    const n = bookmarks.filter(b => b.collection === c.id && b.status !== 'trashed').length;
+    if (!confirm(`Delete the collection "${c.name}"?` + (n ? ` Its ${n} link${n > 1 ? 's' : ''} will be kept under "No collection".` : ''))) return;
+    setCollections(p => p.filter(x => x.id !== c.id));
+    setBookmarks(p => p.map(b => b.collection === c.id ? { ...b, collection: '' } : b));
+    if (col === c.id) { setTab('all'); setCol(null); }
+    if (f.col === c.id) setF({ ...f, col: '' });
+    closePop(); say('Collection deleted');
+  };
+  const moveCollection = (id, d) => {
+    setCollections(p => { const i = p.findIndex(c => c.id === id), j = i + d; if (j < 0 || j >= p.length) return p; const a = [...p]; [a[i], a[j]] = [a[j], a[i]]; return a; });
+    closePop();
+  };
+  const emptyTrash = () => { if (confirm('Permanently delete everything in Trash?')) { setBookmarks(p => p.filter(b => b.status !== 'trashed')); say('Trash emptied'); } };
+  const exportData = () => {
+    const blob = new Blob([JSON.stringify({ app: 'linkvault', version: 1, exportedAt: new Date().toISOString(), bookmarks, collections }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `linkvault-backup-${new Date().toISOString().slice(0, 10)}.json`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000); say('Backup downloaded');
+  };
+  const importData = async file => {
+    if (!file) return;
+    try {
+      const d = JSON.parse(await file.text());
+      if (!Array.isArray(d.bookmarks)) throw 0;
+      const ids = new Set(bookmarks.map(b => b.id)), urls = new Set(bookmarks.map(b => b.url.trim().toLowerCase()));
+      const fresh = d.bookmarks.filter(b => b && b.id && b.url && !ids.has(String(b.id)) && !urls.has(b.url.trim().toLowerCase()))
+        .map(b => ({ status: 'active', createdAt: Date.now(), ...b, id: String(b.id) }));
+      const cids = new Set(collections.map(c => c.id));
+      const newCols = (d.collections || []).filter(c => c && c.id && !cids.has(c.id));
+      setCollections(p => [...p, ...newCols]); setBookmarks(p => [...fresh, ...p]);
+      say(`Imported ${fresh.length} link${fresh.length === 1 ? '' : 's'}`);
+    } catch { alert('That file is not a valid LinkVault backup.'); }
+  };
+  const dropCollection = () => {
+    if (!drag || !drag.over || drag.over === drag.id) return setDrag(null);
+    setCollections(p => {
+      const item = p.find(c => c.id === drag.id), rest = p.filter(c => c.id !== drag.id);
+      let i = rest.findIndex(c => c.id === drag.over); if (drag.after) i++;
+      rest.splice(i, 0, item); return rest;
+    });
+    setDrag(null);
+  };
+  const orphan = b => !collections.some(c => c.id === b.collection);
 
   const active = bookmarks.filter(b => b.status === 'active');
-  const allTags = [...new Set(active.flatMap(b => b.tags || []))].sort();
-  const nFilters = [f.col, f.fav, f.banner, f.tag].filter(Boolean).length;
+  
   const ql = q.toLowerCase();
   const shown = bookmarks.filter(b => {
-    if (ql && !(b.title + ' ' + b.url + ' ' + (b.description || '') + ' ' + (b.tags || []).join(' ')).toLowerCase().includes(ql)) return false;
+    if (ql && !(b.title + ' ' + b.url + ' ' + (b.description || '')).toLowerCase().includes(ql)) return false;
     if (tab === 'trash') return b.status === 'trashed';
     if (tab === 'archive') return b.status === 'archived';
     if (b.status !== 'active') return false;
-    if (col && b.collection !== col) return false;
+    if (col && (col === '__none' ? !orphan(b) : b.collection !== col)) return false;
     if (tab === 'fav' && !b.isFavorite) return false;
     if (f.col && b.collection !== f.col) return false;
     if (f.fav && !b.isFavorite) return false;
     if (f.banner && !b.bannerUrl) return false;
-    if (f.tag && !(b.tags || []).includes(f.tag)) return false;
     return true;
-  }).sort((a, b) => sort === 'name' ? a.title.localeCompare(b.title) : sort === 'old' ? a.createdAt - b.createdAt : b.createdAt - a.createdAt);
+  }).sort((a, b) => {
+    if (sort === 'name') return a.title.localeCompare(b.title);
+    if (sort === 'old') return a.createdAt - b.createdAt;
+    if (sort === 'visits') { const v = (b.visits || 0) - (a.visits || 0); if (v) return v; }
+    if (sort === 'default') { // grouped in the same order as the sidebar collections
+      const ci = x => { const i = collections.findIndex(c => c.id === x.collection); return i < 0 ? 1e6 : i; };
+      const d = ci(a) - ci(b); if (d) return d;
+    }
+    return b.createdAt - a.createdAt;
+  });
 
   const count = s => bookmarks.filter(b => b.status === s).length;
-  const title = col ? (collections.find(c => c.id === col) || {}).name : { all: 'All Bookmarks', fav: 'Favorites', archive: 'Archive', trash: 'Trash' }[tab];
+  const title = col ? (col === '__none' ? 'No collection' : (collections.find(c => c.id === col) || {}).name) : { all: 'All Bookmarks', fav: 'Favorites', archive: 'Archive', trash: 'Trash' }[tab];
   const nav = (t, c = null) => { setTab(t); setCol(c); };
   const trig = (id, type) => e => { const r = e.currentTarget.getBoundingClientRect(); setPop(pop && pop.id === id && pop.type === type ? null : { id, type, rect: r }); };
   const popBm = pop && pop.type === 'menu' ? bookmarks.find(b => b.id === pop.id) : null;
@@ -276,7 +351,6 @@ function App() {
     ['bookmark', active.length, 'Total Bookmarks', 'text-blue-500 bg-blue-500/10'],
     ['star', active.filter(b => b.isFavorite).length, 'Favorites', 'text-amber-500 bg-amber-500/10'],
     ['folder', collections.length, 'Collections', 'text-purple-500 bg-purple-500/10'],
-    ['tag', allTags.length, 'Tags Used', 'text-emerald-500 bg-emerald-500/10'],
   ];
   const NavBtn = ({ on, onClick, icon, label, n }) => (
     <button onClick={onClick} className={`nav ${on ? 'on' : ''}`}><span className="flex items-center gap-2.5"><span className="w-5 text-center">{icon}</span>{label}</span><span className="text-xs mut">{n}</span></button>
@@ -300,14 +374,33 @@ function App() {
             <div>
               <div className="flex items-center justify-between px-2.5 mb-1.5 text-[11px] font-semibold tracking-wider uppercase mut">
                 <span>Collections</span>
-                <button onClick={() => setColModal(true)} className="hover:text-orange-500 flex items-center gap-1"><Icon name="plus" className="w-3 h-3" />New</button>
+                <button onClick={openColNew} className="hover:text-orange-500 flex items-center gap-1"><Icon name="plus" className="w-3 h-3" />New</button>
               </div>
               <div className="space-y-0.5">
-                {collections.map(c => <NavBtn key={c.id} on={col === c.id} onClick={() => nav('collection', c.id)} icon={c.icon} label={c.name} n={active.filter(b => b.collection === c.id).length} />)}
+                {collections.map(c => (
+                  <div key={c.id} className={`group relative rounded-lg cursor-grab active:cursor-grabbing ${drag && drag.id === c.id ? 'opacity-40' : ''}`}
+                    style={drag && drag.over === c.id && drag.id !== c.id ? { boxShadow: drag.after ? '0 2px 0 #f97316' : '0 -2px 0 #f97316' } : undefined}
+                    draggable
+                    onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.id); setDrag({ id: c.id }); }}
+                    onDragOver={e => { e.preventDefault(); if (!drag) return; const r = e.currentTarget.getBoundingClientRect(), after = e.clientY > r.top + r.height / 2; if (drag.over !== c.id || drag.after !== after) setDrag({ ...drag, over: c.id, after }); }}
+                    onDrop={e => { e.preventDefault(); dropCollection(); }}
+                    onDragEnd={() => setDrag(null)}>
+                    <NavBtn on={col === c.id} onClick={() => nav('collection', c.id)} icon={c.icon} label={c.name} n={active.filter(b => b.collection === c.id).length} />
+                    <button data-trig title="Collection options" onClick={trig(c.id, 'col')} className="sq ov !w-6 !h-6 absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100"><Icon name="dots" className="w-3.5 h-3.5" /></button>
+                  </div>
+                ))}
+                {active.some(orphan) && <NavBtn on={col === '__none'} onClick={() => nav('collection', '__none')} icon="📂" label="No collection" n={active.filter(orphan).length} />}
               </div>
             </div>
+          
           </div>
-          <div className="p-4 border-t text-xs mut flex justify-between" style={{ borderColor: 'var(--bd)' }}><span>LinkVault v1.1.1</span><span className="text-orange-500 font-mono">Personal Vault</span></div>
+          <div className="p-3 border-t text-xs mut" style={{ borderColor: 'var(--bd)' }}>
+            <div className="flex gap-2 mb-2">
+              <button className="btn flex-1 justify-center" onClick={exportData} title="Download a backup of all your links"><Icon name="download" />Export</button>
+              <label className="btn flex-1 justify-center cursor-pointer" title="Add links from a backup file"><Icon name="upload" />Import<input type="file" accept="application/json,.json" hidden onChange={e => { importData(e.target.files[0]); e.target.value = ''; }} /></label>
+            </div>
+            <div className="text-center">LinkVault v1.4.0</div>
+          </div>
         </aside>
       )}
 
@@ -317,14 +410,13 @@ function App() {
           <h1 className="font-semibold ml-1 mr-auto truncate">{title}</h1>
           <div className="relative hidden md:block w-64">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 mut"><Icon name="search" /></span>
-            <input ref={searchRef} value={q} onChange={e => setQ(e.target.value)} placeholder="Search links, tags…" className="inp" style={{ paddingLeft: 36, paddingRight: 64, height: 36 }} />
+            <input ref={searchRef} value={q} onChange={e => setQ(e.target.value)} placeholder="Search links…" className="inp" style={{ paddingLeft: 36, paddingRight: 64, height: 36 }} />
             <span className="absolute right-2 top-1/2 -translate-y-1/2 chip pointer-events-none">{IS_MAC ? '⌘K' : 'Ctrl K'}</span>
           </div>
           <div className="flex rounded-lg border p-0.5" style={{ borderColor: 'var(--bd)' }}>
             {['grid', 'list'].map(v => <button key={v} title={v + ' view'} onClick={() => setView(v)} className={`w-8 h-7 grid place-items-center rounded-md ${view === v ? 'bg-[var(--hov)]' : 'mut'}`}><Icon name={v} /></button>)}
           </div>
-          <button data-trig className="btn" onClick={trig('sort', 'sort')}><Icon name="sort" />{{ new: 'Newest', old: 'Oldest', name: 'A–Z' }[sort]}</button>
-          <button data-trig className="btn" onClick={trig('filter', 'filter')}><Icon name="filter" />Filter{nFilters > 0 && <span className="bg-orange-500 text-white text-[11px] rounded-full px-1.5">{nFilters}</span>}</button>
+          <button data-trig className="btn" onClick={trig('sort', 'sort')}><Icon name="sort" />{{ default: 'Default', visits: 'Most visited', new: 'Newest', old: 'Oldest', name: 'A–Z' }[sort]}</button>
           <button className="btn pri" onClick={openAdd}><Icon name="plus" />Add Bookmark</button>
           <button className="sq" title={theme === 'dark' ? 'Switch to light mode' : 'Switch to night mode'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><Icon name={theme === 'dark' ? 'moon' : 'sun'} /></button>
         </header>
@@ -332,7 +424,7 @@ function App() {
         <div className="flex-1 overflow-y-auto p-6">
           <div className="md:hidden mb-4"><input value={q} onChange={e => setQ(e.target.value)} placeholder="Search…" className="inp" /></div>
           {tab !== 'trash' && tab !== 'archive' && (
-            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
               {stats.map(([ic, n, l, c]) => (
                 <div key={l} className="card p-4 flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-lg grid place-items-center ${c}`}><Icon name={ic} className="w-5 h-5" /></div>
@@ -341,8 +433,8 @@ function App() {
               ))}
             </div>
           )}
-          {nFilters > 0 && <button className="chip mb-4" onClick={() => setF({ col: '', fav: false, banner: false, tag: '' })}>Clear {nFilters} filter{nFilters > 1 ? 's' : ''} ✕</button>}
 
+          {tab === 'trash' && shown.length > 0 && <button className="btn mb-4" onClick={emptyTrash}><Icon name="trash" />Empty trash</button>}
           {shown.length === 0 && <div className="text-center mut text-sm py-20">{tab === 'trash' ? 'Trash is empty.' : tab === 'archive' ? 'Nothing archived.' : 'No links found.'}</div>}
 
           <div className={view === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4' : 'flex flex-col gap-2'}>
@@ -360,10 +452,10 @@ function App() {
                 <div key={b.id} className="card flex items-center gap-3 p-3">
                   <div className="sq !w-10 !h-10"><Favicon url={b.url} title={b.title} /></div>
                   <div className="min-w-0 flex-1">
-                    <a href={href} target="_blank" rel="noopener noreferrer" className="font-semibold hover:text-orange-500 hover:underline">{b.title}</a>
+                    <a href={href} target="_blank" rel="noopener noreferrer" onClick={() => visit(b)} className="font-semibold hover:text-orange-500 hover:underline">{b.title}</a>
                     <p className="text-xs mut truncate">{b.description || getDomain(b.url)}</p>
                   </div>
-                  <span className="hidden md:block text-xs mut whitespace-nowrap">{c && `${c.icon} ${c.name}`}</span>
+                  <span className="hidden md:block text-xs mut whitespace-nowrap">{c ? `${c.icon} ${c.name}` : 'No collection'}</span>
                   {Actions}
                 </div>
               );
@@ -376,12 +468,11 @@ function App() {
                   <div className="p-4 flex-1 flex flex-col">
                     <div className="flex items-center gap-2 min-w-0">
                       {b.bannerUrl && <span className="flex-none w-5 h-5 grid place-items-center"><Favicon url={b.url} title={b.title} /></span>}
-                      <a href={href} target="_blank" rel="noopener noreferrer" className="font-semibold text-base tracking-tight truncate hover:text-orange-500 hover:underline">{b.title}</a>
+                      <a href={href} target="_blank" rel="noopener noreferrer" onClick={() => visit(b)} className="font-semibold text-base tracking-tight truncate hover:text-orange-500 hover:underline">{b.title}</a>
                     </div>
                     <p className="text-sm mut clamp2 mt-1 mb-3 flex-1">{b.description || getDomain(b.url)}</p>
-                    {(b.tags || []).length > 0 && <div className="flex flex-wrap gap-1 mb-3">{b.tags.map(t => <button key={t} className="chip" onClick={() => setF({ ...f, tag: t })}>#{t}</button>)}</div>}
                     <div className="flex items-center justify-between text-xs mut pt-3 border-t" style={{ borderColor: 'var(--bd)' }}>
-                      <span>{c && `${c.icon} ${c.name}`}</span>
+                      <span>{c ? `${c.icon} ${c.name}` : 'No collection'}</span>
                       <span>{new Date(b.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                     </div>
                   </div>
@@ -393,24 +484,25 @@ function App() {
       </main>
 
       {pop && pop.type === 'sort' && (
-        <Pop rect={pop.rect} onClose={closePop} w={160}>
-          {[['new', 'Newest first'], ['old', 'Oldest first'], ['name', 'Name A–Z']].map(([k, l]) => (
+        <Pop rect={pop.rect} onClose={closePop} w={210}>
+          {[['default', 'Default (by collection)'], ['visits', 'Most visited'], ['new', 'Newest first'], ['old', 'Oldest first'], ['name', 'Name A–Z']].map(([k, l]) => (
             <button key={k} className={`mi ${sort === k ? 'on' : ''}`} onClick={() => { setSort(k); closePop(); }}><span className="flex-1">{l}</span>{sort === k && <Icon name="check" />}</button>
           ))}
         </Pop>
       )}
-      {pop && pop.type === 'filter' && (
-        <Pop rect={pop.rect} onClose={closePop} w={280}>
-          <div className="p-3 space-y-3">
-            <div><label className="text-xs mut block mb-1">Collection</label>
-              <Select value={f.col} onChange={v => setF({ ...f, col: v })} options={[{ value: '', label: 'All collections' }, ...collections.map(c => ({ value: c.id, label: `${c.icon} ${c.name}` }))]} /></div>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.fav} onChange={e => setF({ ...f, fav: e.target.checked })} />Favorites only</label>
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.banner} onChange={e => setF({ ...f, banner: e.target.checked })} />Has banner</label>
-            {allTags.length > 0 && <div><label className="text-xs mut block mb-1">Tag</label><div className="flex flex-wrap gap-1">{allTags.map(t => <button key={t} className={`chip ${f.tag === t ? 'on' : ''}`} onClick={() => setF({ ...f, tag: f.tag === t ? '' : t })}>#{t}</button>)}</div></div>}
-            <button className="btn w-full justify-center" onClick={() => setF({ col: '', fav: false, banner: false, tag: '' })}>Reset filters</button>
-          </div>
-        </Pop>
-      )}
+      {pop && pop.type === 'col' && (() => {
+        const c = collections.find(x => x.id === pop.id); if (!c) return null;
+        const i = collections.indexOf(c);
+        return (
+          <Pop rect={pop.rect} onClose={closePop} w={200}>
+            <button className="mi" onClick={() => openColEdit(c)}><Icon name="edit" />Rename / change emoji</button>
+            {i > 0 && <button className="mi" onClick={() => moveCollection(c.id, -1)}><Icon name="up" />Move up</button>}
+            {i < collections.length - 1 && <button className="mi" onClick={() => moveCollection(c.id, 1)}><Icon name="chevron" />Move down</button>}
+            <div className="my-1 border-t" style={{ borderColor: 'var(--bd)' }} />
+            <button className="mi danger" onClick={() => deleteCollection(c)}><Icon name="trash" />Delete collection</button>
+          </Pop>
+        );
+      })()}
       {popBm && (
         <Pop rect={pop.rect} onClose={closePop}>
           {popBm.status === 'trashed' ? (<>
@@ -434,12 +526,11 @@ function App() {
             <div className="flex items-center justify-between"><h3 className="font-semibold text-lg">{editingId ? 'Edit Link' : 'Add New Link'}</h3><button type="button" className="sq" onClick={() => setModal(false)}><Icon name="x" /></button></div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className="text-xs mut block mb-1">Title</label><input className="inp" required autoFocus value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. YouTube" /></div>
-              <div><label className="text-xs mut block mb-1">URL</label><input className="inp" required value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} placeholder="youtube.com" /></div>
+              <div><label className="text-xs mut block mb-1">URL</label><input className="inp" required value={form.url} onChange={e => setForm({ ...form, url: e.target.value })} onBlur={() => { if (!form.title.trim() && form.url.trim()) { const d = getDomain(form.url).split('.')[0]; if (d) setForm(p => ({ ...p, title: d[0].toUpperCase() + d.slice(1) })); } }} placeholder="youtube.com" /></div>
             </div>
             <div><label className="text-xs mut block mb-1">Description</label><textarea className="inp" rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Short summary…" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="text-xs mut block mb-1">Collection</label><Select value={form.collection} onChange={v => setForm({ ...form, collection: v })} options={collections.map(c => ({ value: c.id, label: `${c.icon} ${c.name}` }))} /></div>
-              <div><label className="text-xs mut block mb-1">Tags (comma separated)</label><input className="inp" value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="code, docs" /></div>
+            <div className="grid grid-cols-1 gap-3">
+              <div><label className="text-xs mut block mb-1">Collection</label><Select value={form.collection} onChange={v => setForm({ ...form, collection: v })} options={[{ value: '', label: '📂 No collection' }, ...collections.map(c => ({ value: c.id, label: `${c.icon} ${c.name}` }))]} /></div>
             </div>
             <div>
               <label className="text-xs mut block mb-1">Banner (optional)</label>
@@ -463,15 +554,15 @@ function App() {
       {colModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm grid place-items-center p-4 z-50" onMouseDown={e => e.target === e.currentTarget && setColModal(false)}>
           <form onSubmit={addCollection} className="card w-full max-w-sm p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between"><h3 className="font-semibold text-lg">Create Collection</h3><button type="button" className="sq" onClick={() => setColModal(false)}><Icon name="x" /></button></div>
+            <div className="flex items-center justify-between"><h3 className="font-semibold text-lg">{editCol ? 'Edit Collection' : 'Create Collection'}</h3><button type="button" className="sq" onClick={() => setColModal(false)}><Icon name="x" /></button></div>
             <div><label className="text-xs mut block mb-1">Emoji</label><input className="inp text-center" maxLength={2} value={newCol.icon} onChange={e => setNewCol({ ...newCol, icon: e.target.value })} /></div>
             <div><label className="text-xs mut block mb-1">Name</label><input className="inp" required autoFocus value={newCol.name} onChange={e => setNewCol({ ...newCol, name: e.target.value })} placeholder="e.g. Gaming & Streams" /></div>
-            <div className="flex justify-end gap-2"><button type="button" className="btn" onClick={() => setColModal(false)}>Cancel</button><button type="submit" className="btn pri">Create</button></div>
+            <div className="flex justify-end gap-2"><button type="button" className="btn" onClick={() => setColModal(false)}>Cancel</button><button type="submit" className="btn pri">{editCol ? 'Save' : 'Create'}</button></div>
           </form>
         </div>
       )}
 
-      {toast && <div className="fixed bottom-5 left-1/2 -translate-x-1/2 card px-4 py-2 text-sm shadow-2xl z-[120] flex items-center gap-2"><Icon name="check" className="w-4 h-4 text-emerald-500" />{toast}</div>}
+      {toast && <div className="fixed bottom-5 left-1/2 -translate-x-1/2 card px-4 py-2 text-sm shadow-2xl z-[120] flex items-center gap-2"><Icon name="check" className="w-4 h-4 text-emerald-500" />{toast.m}{toast.undo && <button className="ml-2 font-semibold text-orange-500 hover:underline" onClick={() => { toast.undo(); setToast(null); }}>Undo</button>}</div>}
     </div>
   );
 }

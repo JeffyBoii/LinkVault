@@ -1,5 +1,5 @@
 // LinkVault service worker: makes the app installable and lets it open offline.
-const VERSION = 'linkvault-v1.1.1';
+const VERSION = 'linkvault-v1.2.0';
 const SHELL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 const IMG_CACHE = VERSION + '-img';
 const IMG_MAX = 80;

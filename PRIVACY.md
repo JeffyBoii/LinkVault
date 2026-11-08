@@ -6,7 +6,7 @@ LinkVault is built to keep your data on your own device. This page explains what
 
 ## What LinkVault stores
 
-Your bookmarks, collections, tags, banners and settings (theme, view and sort order) are saved in your browser's **local storage**. They stay on your device.
+Your bookmarks, collections, banners and settings (theme, view and sort order) are saved in your browser's **local storage**. They stay on your device.
 
 - LinkVault has **no accounts**, **no server** and **no database**.
 - The author of this project **cannot see** your links.

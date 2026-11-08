@@ -2,7 +2,7 @@
 
 <p align="center">
   <b>Your links, organised.</b><br>
-  A sleek bookmark manager with collections, tags, banners and night mode. It runs in your browser with nothing to install.
+  A sleek bookmark manager with collections, banners and night mode. It runs in your browser with nothing to install.
 </p>
 
 <p align="center">
@@ -36,23 +36,22 @@
 
 ## ✨ What is LinkVault?
 
-LinkVault is a personal place to keep the sites you want to come back to. Save a link, drop it into a collection, add a few tags and a banner, and find it again in seconds with search, filters and sorting.
+LinkVault is a personal place to keep the sites you want to come back to. Save a link, drop it into a collection, add a banner, and find it again in seconds with search, filters and sorting.
 
 It is a single static page. There is no sign-up, no ads and no tracking, and everything you save stays in your own browser.
 
 ## 🎯 Features
 
 **Organise**
-- **Collections** with your own emoji, such as Development, Design Resources or Reading List
-- **Tags** on every link, and click a tag to filter by it
+- **Collections** with your own emoji, such as Development, Design Resources or Reading List. Drag to reorder, or rename and delete them any time
 - **Favorites** with a heart button
 - **Archive** for links you want out of the way, and **Trash** with restore and permanent delete
 - **Edit** any link after saving it
 
 **Find**
-- **Search** across title, URL, description and tags
-- **Filter** by collection, favorites, has banner and tag
-- **Sort** by newest, oldest or name A to Z
+- **Search** across title, URL and description
+- **Filter** from the sidebar by collection or favorites
+- **Sort** by Default (grouped by collection), most visited, newest, oldest or name A to Z
 - **Grid and list views**
 
 **Make it look good**
@@ -60,7 +59,7 @@ It is a single static page. There is no sign-up, no ads and no tracking, and eve
 - **Automatic banners** for YouTube, Twitch, GitHub, Figma, React Docs and Spotify
 - **Site logos** are fetched automatically, and a link with no banner shows its logo in the centre of the card
 - **Night mode and light mode** with one click, and LinkVault remembers your choice
-- **Stats** for total bookmarks, favorites, collections and tags used
+- **Stats** for total bookmarks, favorites and collections
 
 **Quality of life**
 - Click a link's name to open the site in a new tab
@@ -86,13 +85,15 @@ Links you click inside the installed app open in your browser, so the app window
 | Key | Action |
 |---|---|
 | `Ctrl` + `K` (`⌘` + `K` on Mac) | Jump to search |
+| `N` | Add a new link |
+| `/` | Jump to search |
 | `Esc` | Close menus and windows |
 
 ## 💾 Where is my data?
 
 Everything is saved in your browser's **local storage**, on your own device.
 
-- There is no cloud sync, so links saved on your phone will not appear on your PC.
+- There is no cloud sync, so links saved on your phone will not appear on your PC. Use **Export** and **Import** in the sidebar to move your links between devices or keep a backup.
 - Clearing your browser data, or using a private window, removes your links.
 - Different browsers on the same computer each have their own separate list.
 
